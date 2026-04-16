@@ -32,13 +32,13 @@
 
 ---
 
-## Déploiement avec Docker
+## Déploiement
 
 ### 1. Cloner le repo
 
 ```bash
-git clone https://github.com/votre-utilisateur/tracker-tools.git
-cd tracker-tools
+git clone https://github.com/mrddream/trackertools.git
+cd trackertools
 ```
 
 ### 2. Configurer (optionnel)
@@ -61,31 +61,23 @@ cp config/config.json.example config/config.json
 
 > Sans ce fichier, l'application fonctionne normalement — la connexion se fait manuellement via ⚙ Paramètres.
 
-### 3. Lancer
+### 3. Lancer avec l'image Docker (recommandé)
 
 ```bash
 docker compose up -d
 ```
 
+L'image est récupérée automatiquement depuis `ghcr.io/mrddream/trackertools:latest`.
+
 L'interface est accessible sur `http://localhost:8077`
 
----
+### Build local
 
-## Utilisation sans Docker
-
-Servez simplement les fichiers statiques avec n'importe quel serveur HTTP local :
+Si vous souhaitez construire l'image vous-même à partir des sources :
 
 ```bash
-# Python
-python -m http.server 8080
-
-# Node.js
-npx serve .
+docker compose -f docker-compose-dev.yml up -d
 ```
-
-Puis ouvrez `http://localhost:8080`.
-
-> L'ouverture directe via `file://` fonctionne pour l'interface, mais les appels à Prowlarr peuvent échouer selon la configuration CORS de votre instance.
 
 ---
 
@@ -99,17 +91,9 @@ Si Prowlarr tourne sur une machine différente, activez le CORS dans **Prowlarr 
 ## Stack technique
 
 - HTML / CSS / JavaScript — aucune dépendance, aucun build
-- [nginx](https://nginx.org/) (via Docker) pour le service des fichiers statiques
+- [nginx](https://nginx.org/) pour le service des fichiers statiques
 - API Prowlarr v1 (`/api/v1/indexer`, `/api/v1/search`)
 - API Torznab standard pour les indexeurs manuels
-
----
-
-## Capture d'écran
-
-> Mode sombre — Recherche multi-indexeurs
-
-![screenshot](https://i.imgur.com/placeholder.png)
 
 ---
 

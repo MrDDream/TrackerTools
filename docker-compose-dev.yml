@@ -1,9 +1,10 @@
 services:
   tracker-tools:
-    image: ghcr.io/mrddream/trackertools:latest
+    build: .
     container_name: TrackerTools
     ports:
       - "8077:80"
     volumes:
       - ./config:/usr/share/nginx/html/config
     restart: unless-stopped
+
