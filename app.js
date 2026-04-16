@@ -244,9 +244,6 @@
   const sectionIndexers   = document.getElementById('section-indexers');
   const selectT1          = document.getElementById('select-t1');
   const selectT2          = document.getElementById('select-t2');
-  const selectedPair      = document.getElementById('selected-pair');
-  const pairT1            = document.getElementById('pair-t1');
-  const pairT2            = document.getElementById('pair-t2');
 
   const sectionFilters    = document.getElementById('section-filters');
   const filterQuery       = document.getElementById('filter-query');
@@ -310,6 +307,20 @@
   let sortCol     = null;
   let sortDir     = 'asc';
   let currentPage = 0;
+
+  // ─── Indexer lookup (robust ID comparison) ───────────────
+  function findIndexer(id) {
+    return allIndexers.find(i => String(i.id) === String(id));
+  }
+
+  function indexerName(id, fallback) {
+    const idx = findIndexer(id);
+    if (idx?.name) return idx.name;
+    // Fallback: read label directly from the select option
+    const sel = String(selectT1.value) === String(id) ? selectT1 : selectT2;
+    const opt = Array.from(sel.options).find(o => String(o.value) === String(id));
+    return opt ? opt.textContent.replace(/\s*\[.*?\].*$/, '').trim() : fallback;
+  }
 
   // ─── API helper (header auth instead of query param) ──────
   function apiFetch(path) {
@@ -525,6 +536,17 @@
       url:    prowlarrUrl.value.trim(),
       apiKey: prowlarrApiKey.value.trim()
     }));
+    persistConfig();
+  }
+
+  function persistConfig() {
+    const url    = prowlarrUrl.value.trim();
+    const apiKey = prowlarrApiKey.value.trim();
+    fetch('/api/save-config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url, apiKey, manualIndexers })
+    }).catch(() => {}); // silencieux si hors Docker
   }
 
   function saveIndexerSelection() {
@@ -749,17 +771,11 @@
     const t2Id = selectT2.value;
 
     if (t1Id && t2Id && t1Id !== t2Id) {
-      const t1 = allIndexers.find(i => i.id == t1Id);
-      const t2 = allIndexers.find(i => i.id == t2Id);
-      pairT1.textContent = t1 ? t1.name : 'T1';
-      pairT2.textContent = t2 ? t2.name : 'T2';
-      selectedPair.style.display = 'flex';
       checkStep3Unlock();
       saveIndexerSelection();
-      updateTrackerBadges(t1?.name || 'T1', t2?.name || 'T2');
-      log(`Indexeurs sélectionnés: "${t1?.name}" vs "${t2?.name}"`, 'info');
+      updateTrackerBadges(indexerName(t1Id, 'T1'), indexerName(t2Id, 'T2'));
+      log(`Indexeurs sélectionnés: "${indexerName(t1Id, 'T1')}" vs "${indexerName(t2Id, 'T2')}"`, 'info');
     } else {
-      selectedPair.style.display = 'none';
       checkStep3Unlock();
       if (t1Id && t2Id && t1Id === t2Id) {
         log('Veuillez sélectionner deux indexeurs différents.', 'warn');
@@ -784,8 +800,8 @@
     const cat       = filterCat.value;
     const limit     = parseInt(filterLimit.value) || 100;
     const matchMode = filterMatchMode.value;
-    const t1Name    = allIndexers.find(i => i.id == t1Id)?.name || 'T1';
-    const t2Name    = allIndexers.find(i => i.id == t2Id)?.name || 'T2';
+    const t1Name    = indexerName(t1Id, 'T1');
+    const t2Name    = indexerName(t2Id, 'T2');
     updateTrackerBadges(t1Name, t2Name);
 
     // UI — loading state
@@ -820,8 +836,8 @@
 
       progressBar.style.width = '20%';
 
-      const indexer1 = allIndexers.find(i => i.id == t1Id);
-      const indexer2 = allIndexers.find(i => i.id == t2Id);
+      const indexer1 = findIndexer(t1Id);
+      const indexer2 = findIndexer(t2Id);
 
       // Parallel search — both indexers at the same time
       const [resT1, resT2] = await Promise.all([
@@ -1294,8 +1310,8 @@
     emptyState.style.display   = 'none';
     resultsTable.style.display = 'table';
 
-    const t1Name    = allIndexers.find(i => i.id == selectT1.value)?.name || 'T1';
-    const t2Name    = allIndexers.find(i => i.id == selectT2.value)?.name || 'T2';
+    const t1Name    = indexerName(selectT1.value, 'T1');
+    const t2Name    = indexerName(selectT2.value, 'T2');
     const pageStart = currentPage * PAGE_SIZE;
     const pageEnd   = Math.min(pageStart + PAGE_SIZE, data.length);
     const pageData  = data.slice(pageStart, pageEnd);
@@ -1625,8 +1641,8 @@ function makeRow(release, sourceName, sourceClass, idx) {
 
   // ─── CSV Export (current tab) ────────────────────────────
   btnExportCsv.addEventListener('click', () => {
-    const t1Name = allIndexers.find(i => i.id == selectT1.value)?.name || 'T1';
-    const t2Name = allIndexers.find(i => i.id == selectT2.value)?.name || 'T2';
+    const t1Name = indexerName(selectT1.value, 'T1');
+    const t2Name = indexerName(selectT2.value, 'T2');
     let header, rows;
 
     if (currentTab === 'common') {
@@ -1655,8 +1671,8 @@ function makeRow(release, sourceName, sourceClass, idx) {
 
   // ─── CSV Export (all tabs) ────────────────────────────────
   btnExportAll.addEventListener('click', () => {
-    const t1Name = allIndexers.find(i => i.id == selectT1.value)?.name || 'T1';
-    const t2Name = allIndexers.find(i => i.id == selectT2.value)?.name || 'T2';
+    const t1Name = indexerName(selectT1.value, 'T1');
+    const t2Name = indexerName(selectT2.value, 'T2');
 
     const header = ['Type', 'Source', 'Titre', 'Catégorie', 'Taille (bytes)', 'Seeders', 'Date', 'Lien'];
     const rows   = [];
@@ -1895,6 +1911,7 @@ function makeRow(release, sourceName, sourceClass, idx) {
     allIndexers = allIndexers.filter(i => !i.isManual).concat(manualIndexers);
     populateSelectors();
     renderManualIndexersList();
+    persistConfig();
   }
 
   function renderManualIndexersList() {

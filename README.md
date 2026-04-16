@@ -34,10 +34,10 @@
 ### Général
 - Connexion à Prowlarr via URL + clé API
 - Support des indexeurs **Torznab externes** (Jackett, etc.)
+- **Persistance de la configuration** dans le volume Docker (URL, clé API, indexeurs manuels)
 - Thème clair / sombre
 - Interface bilingue **FR / EN**
 - Pagination (50 résultats par page)
-- Configuration persistante (localStorage)
 - Console de débogage intégrée
 
 ---
@@ -64,31 +64,21 @@ services:
     ports:
       - "8077:80"
     volumes:
-      - ./config:/usr/share/nginx/html/config
+      - ./config:/config
     restart: unless-stopped
 ```
 
-### 2. Configurer (optionnel)
-
-Pour pré-remplir automatiquement l'URL et la clé API Prowlarr au démarrage, créez un fichier `config/config.json` :
-
-```json
-{
-  "url": "http://votre-ip-prowlarr:9696",
-  "apiKey": "VOTRE_CLE_API",
-  "manualIndexers": []
-}
-```
-
-> Sans ce fichier, l'application fonctionne normalement — la connexion se fait manuellement via ⚙ Paramètres.
-
-### 3. Lancer
+### 2. Lancer
 
 ```bash
 docker compose up -d
 ```
 
 L'interface est accessible sur `http://localhost:8077`
+
+### 3. Configuration
+
+Connectez-vous à Prowlarr et ajoutez vos indexeurs directement depuis l'interface via **⚙ Paramètres**. La configuration est automatiquement sauvegardée dans le volume `./config` et restaurée au redémarrage du container.
 
 ---
 
@@ -102,7 +92,7 @@ Si Prowlarr tourne sur une machine différente, activez le CORS dans **Prowlarr 
 ## Stack technique
 
 - HTML / CSS / JavaScript — aucune dépendance, aucun build
-- [nginx](https://nginx.org/) pour le service des fichiers statiques
+- [Node.js](https://nodejs.org/) pour le serveur de fichiers statiques et la persistance de configuration
 - API Prowlarr v1 (`/api/v1/indexer`, `/api/v1/search`)
 - API Torznab standard pour les indexeurs manuels
 
@@ -115,5 +105,5 @@ MIT
 ---
 
 <p align="center">
-  Conçu avec l'aide de <a href="https://www.anthropic.com/claude">Claude</a> &amp; <a href="https://antigravity.google/">Antigravity</a>
+  Conçu avec l'aide de <a href="https://www.anthropic.com/claude">Claude</a> &amp; <a href="https://github.com/mrddream">Antigravity</a>
 </p>

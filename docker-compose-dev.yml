@@ -5,6 +5,5 @@ services:
     ports:
       - "8077:80"
     volumes:
-      - ./config:/usr/share/nginx/html/config
+      - ./config:/config
     restart: unless-stopped
-

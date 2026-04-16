@@ -2,6 +2,9 @@
 .gitignore
 *.md
 docker-compose.yml
+docker-compose-dev.yml
 Dockerfile
 .dockerignore
+nginx.conf
 config/
+img/

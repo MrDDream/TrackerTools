@@ -34,10 +34,10 @@
 ### General
 - Connect to Prowlarr via URL + API key
 - Support for **external Torznab indexers** (Jackett, etc.)
+- **Configuration persistence** in the Docker volume (URL, API key, manual indexers)
 - Light / dark theme
 - Bilingual interface **FR / EN**
 - Pagination (50 results per page)
-- Persistent configuration (localStorage)
 - Built-in debug console
 
 ---
@@ -64,31 +64,21 @@ services:
     ports:
       - "8077:80"
     volumes:
-      - ./config:/usr/share/nginx/html/config
+      - ./config:/config
     restart: unless-stopped
 ```
 
-### 2. Configure (optional)
-
-To pre-fill the Prowlarr URL and API key on startup, create a `config/config.json` file:
-
-```json
-{
-  "url": "http://your-prowlarr-ip:9696",
-  "apiKey": "YOUR_API_KEY",
-  "manualIndexers": []
-}
-```
-
-> Without this file the app works normally — connection is done manually via ⚙ Settings.
-
-### 3. Run
+### 2. Run
 
 ```bash
 docker compose up -d
 ```
 
 The interface is available at `http://localhost:8077`
+
+### 3. Configuration
+
+Connect to Prowlarr and add your indexers directly from the interface via **⚙ Settings**. The configuration is automatically saved to the `./config` volume and restored on container restart.
 
 ---
 
@@ -102,7 +92,7 @@ If Prowlarr runs on a different machine, enable CORS in **Prowlarr → Settings 
 ## Tech stack
 
 - HTML / CSS / JavaScript — no dependencies, no build step
-- [nginx](https://nginx.org/) to serve static files
+- [Node.js](https://nodejs.org/) for static file serving and configuration persistence
 - Prowlarr API v1 (`/api/v1/indexer`, `/api/v1/search`)
 - Standard Torznab API for manual indexers
 
@@ -115,5 +105,5 @@ MIT
 ---
 
 <p align="center">
-  Built with the help of <a href="https://www.anthropic.com/claude">Claude</a> &amp; <a href="https://antigravity.google/">Antigravity</a>
+  Built with the help of <a href="https://www.anthropic.com/claude">Claude</a> &amp; <a href="https://github.com/mrddream">Antigravity</a>
 </p>

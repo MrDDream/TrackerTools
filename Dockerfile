@@ -1,14 +1,15 @@
-FROM nginx:alpine
+FROM node:22-alpine
 
-# Copie des fichiers statiques
-COPY index.html /usr/share/nginx/html/
-COPY style.css  /usr/share/nginx/html/
-COPY app.js     /usr/share/nginx/html/
+WORKDIR /app
 
-# Configuration nginx personnalisée
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY index.html .
+COPY style.css  .
+COPY app.js     .
+COPY server.js  .
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost/ || exit 1
+  CMD node -e "require('http').get('http://localhost/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+CMD ["node", "server.js"]
