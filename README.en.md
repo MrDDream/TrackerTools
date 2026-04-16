@@ -54,22 +54,23 @@
 
 ## Deployment
 
-### 1. Clone the repo
+### 1. Create a `docker-compose.yml` file
 
-```bash
-git clone https://github.com/mrddream/trackertools.git
-cd trackertools
+```yaml
+services:
+  tracker-tools:
+    image: ghcr.io/mrddream/trackertools:latest
+    container_name: TrackerTools
+    ports:
+      - "8077:80"
+    volumes:
+      - ./config:/usr/share/nginx/html/config
+    restart: unless-stopped
 ```
 
 ### 2. Configure (optional)
 
-To pre-fill the Prowlarr URL and API key on startup:
-
-```bash
-cp config/config.json.example config/config.json
-```
-
-Edit `config/config.json`:
+To pre-fill the Prowlarr URL and API key on startup, create a `config/config.json` file:
 
 ```json
 {
@@ -81,23 +82,13 @@ Edit `config/config.json`:
 
 > Without this file the app works normally — connection is done manually via ⚙ Settings.
 
-### 3. Run with Docker image (recommended)
+### 3. Run
 
 ```bash
 docker compose up -d
 ```
 
-The image is pulled automatically from `ghcr.io/mrddream/trackertools:latest`.
-
 The interface is available at `http://localhost:8077`
-
-### Local build
-
-To build the image yourself from source:
-
-```bash
-docker compose -f docker-compose-dev.yml up -d
-```
 
 ---
 
