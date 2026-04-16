@@ -1,6 +1,18 @@
 # Tracker Tools
 
+> 🇬🇧 [English version](README.en.md)
+
 **Tracker Tools** est une interface web pour [Prowlarr](https://github.com/Prowlarr/Prowlarr) qui offre deux modes complémentaires : rechercher simultanément sur plusieurs indexeurs, ou comparer deux indexeurs pour identifier les torrents manquants de part et d'autre.
+
+---
+
+## Captures d'écran
+
+### Mode Recherche
+![Mode Recherche](img/search.png)
+
+### Mode Comparaison
+![Mode Comparaison](img/compare.png)
 
 ---
 
