@@ -28,7 +28,10 @@
           </svg>
         </div>
         <div style="display:flex; flex-direction:column; justify-content:center; gap:2px;">
-          <h1 class="app-title" style="margin:0;">Tracker Tools</h1>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h1 class="app-title" style="margin:0;">Tracker Tools</h1>
+            <span id="version-badge" class="version-badge" title="Version actuelle"></span>
+          </div>
           <span id="app-subtitle" style="font-size:0.72rem; font-style:italic; color:var(--text-muted); line-height:1;">Comparateur &amp; explorateur d'indexeurs Prowlarr</span>
         </div>
       </div>
@@ -42,6 +45,14 @@
           <button class="tab-btn mode-btn" data-mode="compare" title="Mode Comparateur">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
             <span id="mode-btn-compare-text">Comparer</span>
+          </button>
+          <button class="tab-btn mode-btn" data-mode="history" title="Historique des recherches">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="mode-btn-history-text">Historique</span>
+          </button>
+          <button class="tab-btn mode-btn" data-mode="watchlist" title="Favoris">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span id="mode-btn-watchlist-text">Favoris</span>
           </button>
         </div>
       </div>
@@ -261,14 +272,17 @@
             </select>
           </div>
           <div class="toolbar-actions">
-            <button class="btn-icon" id="btn-export-csv" title="Exporter l'onglet actif en CSV" disabled>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-              <span id="btn-export-csv-text">CSV</span>
-            </button>
-            <button class="btn-icon" id="btn-export-all" title="Exporter tous les onglets en CSV" disabled>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/><path d="M17 10l-5 5-5-5" opacity="0.4"/></svg>
-              <span id="btn-export-all-text">Tout exporter</span>
-            </button>
+            <div class="export-dropdown" id="export-dropdown">
+              <button class="btn-icon" id="btn-export-trigger" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                <span id="btn-export-trigger-text">Exporter</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-left:2px;"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="export-menu" id="export-menu">
+                <button id="btn-export-csv-all"><span id="export-csv-all-text">Format CSV</span></button>
+                <button id="btn-export-json-all"><span id="export-json-all-text">Format JSON</span></button>
+              </div>
+            </div>
             <button class="btn-icon btn-icon-danger" id="btn-reset" title="Réinitialiser les résultats" disabled>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
               <span id="btn-reset-text">Réinitialiser</span>
@@ -291,8 +305,8 @@
           <table class="results-table" id="results-table" style="display:none">
             <thead>
               <tr>
-                <th id="th-source">Source</th>
-                <th data-sort="title" class="sortable" id="th-title">Titre <span class="sort-icon">↕</span></th>
+                <th id="th-source" style="width:8%;">Source</th>
+                <th data-sort="title" class="sortable" id="th-title" style="width:42%;">Titre <span class="sort-icon">↕</span></th>
                 <th data-sort="category" class="sortable" id="th-category">Catégorie <span class="sort-icon">↕</span></th>
                 <th data-sort="size" class="sortable" id="th-size">Taille <span class="sort-icon">↕</span></th>
                 <th data-sort="seeders" class="sortable" id="th-seeds">Seeds <span class="sort-icon">↕</span></th>
@@ -300,6 +314,7 @@
                 <th data-sort="age" class="sortable" id="th-age">Âge <span class="sort-icon">↕</span></th>
                 <th id="th-link">Lien</th>
                 <th id="th-torrent">Torrent</th>
+                <th id="th-fav" style="width:4%; padding-right:8px;">★</th>
               </tr>
             </thead>
             <tbody id="results-body"></tbody>
@@ -317,6 +332,86 @@
             <span id="btn-next-text">Suivant</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
           </button>
+        </div>
+
+        <!-- History panel -->
+        <div id="history-panel" style="display:none;">
+          <div class="panel-header" style="flex-wrap: wrap;">
+            <span id="history-title-text" style="margin-right:auto">Historique des recherches</span>
+            <div class="history-filters" style="display:flex; gap:8px;">
+               <button class="btn-icon btn-history-filter active" data-filter="all">Tout</button>
+               <button class="btn-icon btn-history-filter" data-filter="search">Recherches</button>
+               <button class="btn-icon btn-history-filter" data-filter="compare">Comparaisons</button>
+            </div>
+            <button class="btn-icon btn-icon-danger" id="btn-clear-history" title="Vider l'historique" style="margin-left:8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+          <!-- History Toolbar -->
+          <div class="results-toolbar" style="margin-top: 16px; margin-bottom: 16px; padding: 0 10px;">
+            <div style="display: flex; gap: 12px; flex: 1; align-items: center;">
+              <div class="search-mini-wrap" style="flex: 1;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                <input type="text" id="history-search" placeholder="Filtrer par titre…" />
+              </div>
+            </div>
+          </div>
+          <div id="history-list" class="item-list"></div>
+        </div>
+
+        <!-- Watchlist panel -->
+        <div id="watchlist-panel" style="display:none;">
+          <div class="panel-header">
+            <span id="watchlist-title-text">Favoris</span>
+            <button class="btn-icon btn-icon-danger" id="btn-clear-watchlist" title="Vider les favoris">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+          <!-- Watchlist Toolbar -->
+          <div class="results-toolbar" style="margin-top: 16px; margin-bottom: 16px; padding: 0 10px;">
+            <div style="display: flex; gap: 12px; flex: 1; align-items: center;">
+              <div class="search-mini-wrap" style="flex: 1;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                <input type="text" id="watchlist-search" placeholder="Filtrer par titre…" />
+              </div>
+              <select id="watchlist-indexer-filter" class="filter-select" style="display: block;">
+                <option value="">Tous les indexeurs</option>
+              </select>
+            </div>
+            <div class="toolbar-actions">
+              <div class="export-dropdown" id="export-watchlist-wrapper">
+                <button class="btn-icon" id="btn-export-watchlist-trigger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                  <span>Exporter</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-left:2px;"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="export-menu" id="export-watchlist-dropdown" style="right:0;">
+                  <button id="btn-export-watchlist-csv"><span>Format CSV</span></button>
+                  <button id="btn-export-watchlist-json"><span>Format JSON</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="results-table" id="watchlist-table" style="display:none">
+              <thead>
+                <tr>
+                  <th style="width:8%;">Source</th>
+                  <th style="width:42%;">Titre</th>
+                  <th>Catégorie</th>
+                  <th>Taille</th>
+                  <th>Seeds</th>
+                  <th>Leech</th>
+                  <th>Âge</th>
+                  <th>Lien</th>
+                  <th>Torrent</th>
+                  <th style="width:4%; padding-right:8px;">★</th>
+                </tr>
+              </thead>
+              <tbody id="watchlist-body"></tbody>
+            </table>
+            <div id="watchlist-empty-state" class="empty-panel" style="display:none"></div>
+          </div>
         </div>
 
         <!-- Log console -->

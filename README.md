@@ -31,13 +31,18 @@
 - Onglets : Manquants sur T1 / Manquants sur T2 / En commun
 - Export CSV de chaque onglet ou de tous les onglets
 
-### Général
+### Général & Utilitaires
+- **Favoris (Watchlist)** : sauvegardez d'un clic vos torrents préférés pour les retrouver plus tard, avec filtre et export dédiés (JSON/CSV)
+- **Historique complet** : retrouvez toutes vos requêtes précédentes (recherche ou comparaison) et relancez-les en un clic
+- Filtre textuel "rapide" sur les résultats de recherche, d'historique et de favoris
+
+### Architecture
 - Connexion à Prowlarr via URL + clé API
 - Support des indexeurs **Torznab externes** (Jackett, etc.)
-- **Persistance de la configuration** dans le volume Docker (URL, clé API, indexeurs manuels)
-- Thème clair / sombre
-- Interface bilingue **FR / EN**
-- Pagination (50 résultats par page)
+- **Persistance totale** assurée par un backend Node.js ultra-léger communiquant avec le volume Docker (URL, clé API, indexeurs manuels, Historique et Favoris)
+- Interface "Glassmorphism" au thème clair / sombre
+- Bilinguisme natif **FR / EN**
+- Pagination fluide des résultats
 - Console de débogage intégrée
 
 ---

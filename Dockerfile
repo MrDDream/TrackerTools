@@ -6,6 +6,7 @@ COPY index.html .
 COPY style.css  .
 COPY app.js     .
 COPY server.js  .
+COPY VERSION    .
 
 EXPOSE 80
 

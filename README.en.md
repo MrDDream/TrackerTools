@@ -31,13 +31,18 @@
 - Tabs: Missing on T1 / Missing on T2 / In common
 - CSV export per tab or all tabs at once
 
-### General
+### General & Utilities
+- **Watchlist (Bookmarks)**: save your favorite torrents in one click to easily retrieve them later, with dedicated filters and exports (JSON/CSV)
+- **Full History**: keep track of all your previous queries (search or comparison) and rerun them instantly
+- "Quick filter" text bar acting locally on search results, history, and watchlist panels
+
+### Architecture
 - Connect to Prowlarr via URL + API key
 - Support for **external Torznab indexers** (Jackett, etc.)
-- **Configuration persistence** in the Docker volume (URL, API key, manual indexers)
-- Light / dark theme
+- **Total Persistence** driven by a lightweight built-in Node.js backend syncing with the Docker volume (Prowlarr URL, API key, manual indexers, as well as History and Watchlist)
+- "Glassmorphism" light / dark theme interface
 - Bilingual interface **FR / EN**
-- Pagination (50 results per page)
+- Fluid pagination of results
 - Built-in debug console
 
 ---

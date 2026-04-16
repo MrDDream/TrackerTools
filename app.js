@@ -147,6 +147,20 @@
       'connect-success': 'Connexion réussie ! Prowlarr v',
       'err-unreachable': "Serveur injoignable. Vérifiez l'URL, le démarrage de Prowlarr et la config CORS.",
       'err-invalid-key': 'Clé API invalide.',
+      // History
+      'mode-history': 'Historique', 'mode-watchlist': 'Favoris',
+      'history-title': 'Historique des recherches', 'btn-clear-history': 'Vider',
+      'watchlist-title': 'Favoris', 'btn-clear-watchlist': 'Vider',
+      'history-empty': 'Aucune recherche dans l\'historique.', 'watchlist-empty': 'Aucun favori enregistré.',
+      'history-rerun': 'Relancer', 'history-delete': 'Supprimer',
+      'watchlist-remove': 'Retirer',
+      'history-mode-search': 'Recherche', 'history-mode-compare': 'Comparaison',
+      'copy-magnet': 'Copier le lien magnet', 'copy-success': 'Copié !',
+      // Export
+      'btn-export': 'Exporter',
+      'export-csv-all': 'Format CSV', 'export-json-all': 'Format JSON',
+      // Sort
+      'sort-primary': 'Tri principal', 'sort-secondary': 'Tri secondaire',
     },
     en: {
       'app-subtitle': 'Prowlarr indexer comparator &amp; explorer',
@@ -221,6 +235,20 @@
       'connect-success': 'Connection successful! Prowlarr v',
       'err-unreachable': 'Server unreachable. Check the URL, Prowlarr startup and CORS config.',
       'err-invalid-key': 'Invalid API key.',
+      // History
+      'mode-history': 'History', 'mode-watchlist': 'Watchlist',
+      'history-title': 'Search history', 'btn-clear-history': 'Clear',
+      'watchlist-title': 'Watchlist', 'btn-clear-watchlist': 'Clear',
+      'history-empty': 'No searches in history.', 'watchlist-empty': 'No saved items.',
+      'history-rerun': 'Rerun', 'history-delete': 'Delete',
+      'watchlist-remove': 'Remove',
+      'history-mode-search': 'Search', 'history-mode-compare': 'Compare',
+      'copy-magnet': 'Copy magnet link', 'copy-success': 'Copied!',
+      // Export
+      'btn-export': 'Export',
+      'export-csv-all': 'CSV format', 'export-json-all': 'JSON format',
+      // Sort
+      'sort-primary': 'Primary sort', 'sort-secondary': 'Secondary sort',
     }
   };
 
@@ -270,8 +298,7 @@
 
   const tabBtns           = document.querySelectorAll('.tab-btn');
   const resultsSearch     = document.getElementById('results-search');
-  const btnExportCsv      = document.getElementById('btn-export-csv');
-  const btnExportAll      = document.getElementById('btn-export-all');
+  const exportTrigger     = document.getElementById('btn-export-trigger');
   const btnReset          = document.getElementById('btn-reset');
   const btnClearLog       = document.getElementById('btn-clear-log');
 
@@ -304,9 +331,13 @@
   let uniqueT2Results = [];
   let multiSearchResults = [];
   let currentTab  = 'search';
-  let sortCol     = null;
+  let sortCol     = null; // kept for compat — mirrors sortPrimary.col
   let sortDir     = 'asc';
   let currentPage = 0;
+  let sortPrimary   = { col: null, dir: 'asc' };
+  let sortSecondary = { col: null, dir: 'asc' };
+  let searchHistory = JSON.parse(localStorage.getItem('search_history') || '[]');
+  let watchlist     = JSON.parse(localStorage.getItem('watchlist') || '[]');
 
   // ─── Indexer lookup (robust ID comparison) ───────────────
   function findIndexer(id) {
@@ -539,14 +570,18 @@
     persistConfig();
   }
 
+  function persistData(type, payload) {
+    fetch('/api/save/' + type, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    }).catch(() => {}); // silencieux si hors Docker
+  }
+
   function persistConfig() {
     const url    = prowlarrUrl.value.trim();
     const apiKey = prowlarrApiKey.value.trim();
-    fetch('/api/save-config', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ url, apiKey, manualIndexers })
-    }).catch(() => {}); // silencieux si hors Docker
+    persistData('config', { url, apiKey, manualIndexers });
   }
 
   function saveIndexerSelection() {
@@ -858,6 +893,16 @@
       progressBar.style.width   = '100%';
       progressLabel.textContent = t('compare-done');
 
+      saveHistory({
+        query: query,
+        cat: cat ? (subcat || cat) : '',
+        mode: 'compare',
+        count: resultsT1.length + resultsT2.length,
+        t1: t1Name,
+        t2: t2Name,
+        date: new Date().toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US') + ' ' + new Date().toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'en-US', {hour: '2-digit', minute: '2-digit'})
+      });
+
       // Overlap percentage (relative to the union of unique keys)
       const totalUnionKeys = (new Set([
         ...resultsT1.map(r => normalizeTitle(r.title)),
@@ -889,8 +934,7 @@
         ${t('tab-common')} <span class="tab-count">${commonResults.length}</span>
       `;
 
-      btnExportCsv.disabled = false;
-      btnExportAll.disabled = false;
+      if (exportTrigger) exportTrigger.disabled = false;
       btnReset.disabled     = false;
       currentPage = 0;
       renderResults();
@@ -926,11 +970,6 @@
     const cat       = filterCat.value;
     const subcat    = filterSubcat.value;
     const limit     = parseInt(filterLimit.value) || 100;
-
-    if (!query) {
-      log('Veuillez entrer une requête de recherche.', 'warn');
-      return;
-    }
 
     // Convert to query string for prowlarr requests
     const baseParams = new URLSearchParams();
@@ -995,6 +1034,14 @@
       }
       
       log(`Recherche globale terminée : ${multiSearchResults.length} résultats pertinents extraits.`, 'ok');
+
+      saveHistory({
+        query: query,
+        cat: cat ? (subcat || cat) : '',
+        mode: 'search',
+        count: multiSearchResults.length,
+        date: new Date().toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US') + ' ' + new Date().toLocaleTimeString(currentLang === 'fr' ? 'fr-FR' : 'en-US', {hour: '2-digit', minute: '2-digit'})
+      });
 
       // Sort globally by seeders descending
       multiSearchResults.sort((a,b) => (b.seeders||0) - (a.seeders||0));
@@ -1242,19 +1289,29 @@
       }
       if (sortCol) {
         data = [...data].sort((a, b) => {
-          let va, vb;
-          switch (sortCol) {
-            case 'title':    va = a.t1.title || '';     vb = b.t1.title || '';     break;
-            case 'size':     va = a.t1.size  || 0;      vb = b.t1.size  || 0;      break;
-            case 'seeders':  va = a.t1.seeders  || 0;   vb = b.t1.seeders  || 0;   break;
-            case 'leechers': va = a.t1.leechers || 0;   vb = b.t1.leechers || 0;   break;
-            case 'age':      va = a.t1.publishDate || ''; vb = b.t1.publishDate || ''; break;
-            case 'category': va = getCategoryName(a.t1); vb = getCategoryName(b.t1); break;
-            default: va = ''; vb = '';
+          function getVal(item, col) {
+            switch (col) {
+              case 'title':    return item.t1.title || '';
+              case 'category': return getCategoryName(item.t1);
+              case 'size':     return item.t1.size || 0;
+              case 'seeders':  return item.t1.seeders || 0;
+              case 'leechers': return item.t1.leechers || 0;
+              case 'age':      return item.t1.publishDate || '';
+              default: return '';
+            }
           }
-          if (typeof va === 'string')
-            return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-          return sortDir === 'asc' ? va - vb : vb - va;
+          const va1 = getVal(a, sortCol), vb1 = getVal(b, sortCol);
+          let cmp1 = typeof va1 === 'string' ? va1.localeCompare(vb1) : va1 - vb1;
+          if (sortDir === 'desc') cmp1 = -cmp1;
+          
+          if (cmp1 !== 0) return cmp1;
+          
+          if (sortSecondary.col) {
+            const va2 = getVal(a, sortSecondary.col), vb2 = getVal(b, sortSecondary.col);
+            let cmp2 = typeof va2 === 'string' ? va2.localeCompare(vb2) : va2 - vb2;
+            return sortSecondary.dir === 'desc' ? -cmp2 : cmp2;
+          }
+          return 0;
         });
       }
     } else {
@@ -1265,19 +1322,29 @@
       }
       if (sortCol) {
         data = [...data].sort((a, b) => {
-          let va, vb;
-          switch (sortCol) {
-            case 'title':    va = a.title || '';      vb = b.title || '';      break;
-            case 'category': va = getCategoryName(a); vb = getCategoryName(b); break;
-            case 'size':     va = a.size     || 0;    vb = b.size     || 0;    break;
-            case 'seeders':  va = a.seeders  || 0;    vb = b.seeders  || 0;    break;
-            case 'leechers': va = a.leechers || 0;    vb = b.leechers || 0;    break;
-            case 'age':      va = a.publishDate || ''; vb = b.publishDate || ''; break;
-            default: va = ''; vb = '';
+          function getVal(item, col) {
+            switch (col) {
+              case 'title':    return item.title || '';
+              case 'category': return getCategoryName(item);
+              case 'size':     return item.size || 0;
+              case 'seeders':  return item.seeders || 0;
+              case 'leechers': return item.leechers || 0;
+              case 'age':      return item.publishDate || '';
+              default: return '';
+            }
           }
-          if (typeof va === 'string')
-            return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-          return sortDir === 'asc' ? va - vb : vb - va;
+          const va1 = getVal(a, sortCol), vb1 = getVal(b, sortCol);
+          let cmp1 = typeof va1 === 'string' ? va1.localeCompare(vb1) : va1 - vb1;
+          if (sortDir === 'desc') cmp1 = -cmp1;
+          
+          if (cmp1 !== 0) return cmp1;
+          
+          if (sortSecondary.col) {
+            const va2 = getVal(a, sortSecondary.col), vb2 = getVal(b, sortSecondary.col);
+            let cmp2 = typeof va2 === 'string' ? va2.localeCompare(vb2) : va2 - vb2;
+            return sortSecondary.dir === 'desc' ? -cmp2 : cmp2;
+          }
+          return 0;
         });
       }
     }
@@ -1379,9 +1446,64 @@ function makeRow(release, sourceName, sourceClass, idx) {
     const downloadUrl = release.downloadUrl || '#';
     const magnetUrl   = release.magnetUrl || '#';
     
-    const isDynamic = sourceClass === 'dynamic';
-    const inlineStyle = isDynamic ? stringToColorStyle(sourceName) : '';
-    const badgeClass = isDynamic ? 'source-badge' : `source-badge ${sourceClass}`;
+    const inlineStyle = stringToColorStyle(sourceName);
+    const badgeClass = 'source-badge';
+
+    const favActive = isInWatchlist(release);
+    const starColor = favActive ? 'currentColor' : 'none';
+    const starClass = favActive ? 'fav-btn active' : 'fav-btn';
+    
+    tr.innerHTML = `
+      <td><span class="${badgeClass}" style="${inlineStyle}" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span></td>
+      <td><span class="torrent-title" title="${escapeHtml(release.title || '')}">${escapeHtml(release.title || 'Sans titre')}</span></td>
+      <td><span class="torrent-cat">${escapeHtml(getCategoryName(release))}</span></td>
+      <td><span class="torrent-size">${formatSize(release.size)}</span></td>
+      <td><span class="seeders-badge ${seedClass}">${seeders}</span></td>
+      <td><span class="leechers-badge">${leechers}</span></td>
+      <td><span class="torrent-age">${formatAge(release.publishDate)}</span></td>
+      <td>${trackerUrl !== '#'
+        ? `<a href="${escapeHtml(trackerUrl)}" target="_blank" rel="noopener" class="link-btn">${t('link-text')}</a>`
+        : '–'}</td>
+      <td>${downloadUrl !== '#'
+        ? `<a href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener" class="link-btn link-btn-torrent" title="Télécharger le .torrent">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+             .torrent</a>`
+        : magnetUrl !== '#'
+          ? `<button type="button" class="link-btn link-btn-magnet" title="${t('copy-magnet')}" data-magnet="${escapeHtml(magnetUrl)}">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15A6 6 0 1 0 18 15V5h-4v10a2 2 0 0 1-4 0V5H6v10z"/></svg>
+               Magnet</button>`
+          : '–'}</td>
+      <td><button class="btn-icon btn-icon-sm ${starClass}"><svg viewBox="0 0 24 24" fill="${starColor}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></td>
+    `;
+    
+    const favBtn = tr.querySelector('.fav-btn');
+    if (favBtn) {
+      favBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleWatchlist(release); // will re-render list and buttons
+        renderResults(); // re-renders current table
+      });
+    }
+
+    return tr;
+  }
+
+  function makeCommonRow(release, sourceName, side, groupIdx, pair) {
+    const tr        = document.createElement('tr');
+    tr.className    = `common-row common-${side}` + (groupIdx % 2 === 0 ? ' common-even' : ' common-odd');
+    const seeders   = release.seeders || 0;
+    const seedClass = seeders >= 10 ? 'high' : seeders >= 3 ? 'mid' : 'low';
+    const inlineStyle = stringToColorStyle(sourceName);
+    const badgeClass = 'source-badge';
+    const trackerUrl = getTrackerUrl(release);
+
+    const leechers    = release.leechers ?? release.peers ?? 0;
+    const downloadUrl = release.downloadUrl || '#';
+    const magnetUrl   = release.magnetUrl || '#';
+    const favActive = isInWatchlist(release);
+    const starColor = favActive ? 'currentColor' : 'none';
+    const starClass = favActive ? 'fav-btn active' : 'fav-btn';
 
     tr.innerHTML = `
       <td><span class="${badgeClass}" style="${inlineStyle}" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span></td>
@@ -1399,46 +1521,23 @@ function makeRow(release, sourceName, sourceClass, idx) {
              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
              .torrent</a>`
         : magnetUrl !== '#'
-          ? `<a href="${escapeHtml(magnetUrl)}" class="link-btn link-btn-magnet" title="Lien magnet">
+          ? `<button type="button" class="link-btn link-btn-magnet" title="${t('copy-magnet')}" data-magnet="${escapeHtml(magnetUrl)}">
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15A6 6 0 1 0 18 15V5h-4v10a2 2 0 0 1-4 0V5H6v10z"/></svg>
-               Magnet</a>`
+               Magnet</button>`
           : '–'}</td>
+      <td><button class="btn-icon btn-icon-sm ${starClass}" data-fav-title="${escapeHtml(release.title || '')}"><svg viewBox="0 0 24 24" fill="${starColor}" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button></td>
     `;
-    return tr;
-  }
 
-  function makeCommonRow(release, sourceName, side, groupIdx, pair) {
-    const tr        = document.createElement('tr');
-    tr.className    = `common-row common-${side}` + (groupIdx % 2 === 0 ? ' common-even' : ' common-odd');
-    const seeders   = release.seeders || 0;
-    const seedClass = seeders >= 10 ? 'high' : seeders >= 3 ? 'mid' : 'low';
-    const sourceClass = side === 't1' ? 'source-t1' : 'source-t2';
-    const trackerUrl = getTrackerUrl(release);
+    const favBtn = tr.querySelector('.fav-btn');
+    if (favBtn) {
+      favBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleWatchlist(release); // will re-render list and buttons
+        renderResults(); // re-renders current table
+      });
+    }
 
-    const leechers    = release.leechers ?? release.peers ?? 0;
-    const downloadUrl = release.downloadUrl || '#';
-    const magnetUrl   = release.magnetUrl || '#';
-    tr.innerHTML = `
-      <td><span class="source-badge ${sourceClass}">${escapeHtml(sourceName)}</span></td>
-      <td><span class="torrent-title" title="${escapeHtml(release.title || '')}">${escapeHtml(release.title || 'Sans titre')}</span></td>
-      <td><span class="torrent-cat">${escapeHtml(getCategoryName(release))}</span></td>
-      <td><span class="torrent-size">${formatSize(release.size)}</span></td>
-      <td><span class="seeders-badge ${seedClass}">${seeders}</span></td>
-      <td><span class="leechers-badge">${leechers}</span></td>
-      <td><span class="torrent-age">${formatAge(release.publishDate)}</span></td>
-      <td>${trackerUrl !== '#'
-        ? `<a href="${escapeHtml(trackerUrl)}" target="_blank" rel="noopener" class="link-btn">${t('link-text')}</a>`
-        : '–'}</td>
-      <td>${downloadUrl !== '#'
-        ? `<a href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener" class="link-btn link-btn-torrent" title="Télécharger le .torrent">
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-             .torrent</a>`
-        : magnetUrl !== '#'
-          ? `<a href="${escapeHtml(magnetUrl)}" class="link-btn link-btn-magnet" title="Lien magnet">
-               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15A6 6 0 1 0 18 15V5h-4v10a2 2 0 0 1-4 0V5H6v10z"/></svg>
-               Magnet</a>`
-          : '–'}</td>
-    `;
     return tr;
   }
 
@@ -1514,8 +1613,7 @@ function makeRow(release, sourceName, sourceClass, idx) {
     resultsTable.style.display  = 'none';
     paginationBar.style.display = 'none';
 
-    btnExportCsv.disabled = true;
-    btnExportAll.disabled = true;
+    if (exportTrigger) exportTrigger.disabled = true;
     btnReset.disabled     = true;
 
     // Reset tab labels
@@ -1558,6 +1656,11 @@ function makeRow(release, sourceName, sourceClass, idx) {
       const filterMatchMode = document.getElementById('filter-match-mode');
       const filterSearchStrict = document.getElementById('filter-search-strict');
       const resultsIdxFilter = document.getElementById('results-indexer-filter');
+      const historyPanel = document.getElementById('history-panel');
+      const watchlistPanel = document.getElementById('watchlist-panel');
+      const tableContainer = document.getElementById('table-container');
+      const resultsToolbar = document.querySelector('.results-toolbar');
+      const paginationBar = document.getElementById('pagination-bar');
       
       if (appMode === 'compare') {
         compareSelectors.style.display = 'block';
@@ -1569,7 +1672,7 @@ function makeRow(release, sourceName, sourceClass, idx) {
         if (filterSearchStrict) filterSearchStrict.closest('.form-group').style.display = 'none';
         if (resultsIdxFilter) resultsIdxFilter.style.display = 'none';
         currentTab = 'unique-t2';
-      } else {
+      } else if (appMode === 'search') {
         compareSelectors.style.display = 'none';
         searchSelectors.style.display = 'block';
         btnRunText.textContent = t('btn-run-search');
@@ -1579,10 +1682,29 @@ function makeRow(release, sourceName, sourceClass, idx) {
         if (filterSearchStrict) filterSearchStrict.closest('.form-group').style.display = 'block';
         if (resultsIdxFilter) resultsIdxFilter.style.display = 'block';
         currentTab = 'search';
+      } else if (appMode === 'history' || appMode === 'watchlist') {
+        // Keep the left panel on its last visual state (either search or compare form), 
+        // just update the right panel viewing modes.
+        statsBar.style.display = 'none';
+        tabsBar.style.display = 'none';
       }
       
-      checkStep3Unlock();
-      renderResults();
+      // Right panel visibility mapping
+      if (historyPanel) historyPanel.style.display = (appMode === 'history') ? 'block' : 'none';
+      if (watchlistPanel) watchlistPanel.style.display = (appMode === 'watchlist') ? 'block' : 'none';
+      
+      if (appMode === 'search' || appMode === 'compare') {
+        if (tableContainer) tableContainer.style.display = 'block';
+        if (resultsToolbar) resultsToolbar.style.display = 'flex';
+        checkStep3Unlock();
+        renderResults();
+      } else {
+        if (tableContainer) tableContainer.style.display = 'none';
+        if (resultsToolbar) resultsToolbar.style.display = 'none';
+        if (paginationBar) paginationBar.style.display = 'none';
+        if (appMode === 'history') renderHistory();
+        if (appMode === 'watchlist') renderWatchlist();
+      }
     });
   });
   
@@ -1639,64 +1761,7 @@ function makeRow(release, sourceName, sourceClass, idx) {
     selectByProtocol('usenet');
   });
 
-  // ─── CSV Export (current tab) ────────────────────────────
-  btnExportCsv.addEventListener('click', () => {
-    const t1Name = indexerName(selectT1.value, 'T1');
-    const t2Name = indexerName(selectT2.value, 'T2');
-    let header, rows;
 
-    if (currentTab === 'common') {
-      header = ['Source T1', 'Titre T1', 'Taille T1 (bytes)', 'Seeds T1',
-                'Source T2', 'Titre T2', 'Taille T2 (bytes)', 'Seeds T2'];
-      rows = commonResults.map(p => [
-        t1Name, csvField(p.t1.title), p.t1.size || 0, p.t1.seeders || 0,
-        t2Name, csvField(p.t2.title), p.t2.size || 0, p.t2.seeders || 0
-      ]);
-    } else {
-      const data = currentTab === 'unique-t2' ? uniqueT2Results : uniqueT1Results;
-      header = ['Source', 'Titre', 'Catégorie', 'Taille (bytes)', 'Seeders', 'Date', 'Lien'];
-      rows = data.map(r => [
-        r._source === 't1' ? t1Name : t2Name,
-        csvField(r.title), getCategoryName(r),
-        r.size || 0, r.seeders || 0,
-        r.publishDate || '', r.downloadUrl || r.magnetUrl || ''
-      ]);
-    }
-
-    if (!rows.length) return;
-    const csv = [header.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    downloadCsv(csv, `comparaison_${currentTab}_${new Date().toISOString().slice(0, 10)}.csv`);
-    log(`Export CSV (${currentTab}): ${rows.length} lignes exportées`, 'ok');
-  });
-
-  // ─── CSV Export (all tabs) ────────────────────────────────
-  btnExportAll.addEventListener('click', () => {
-    const t1Name = indexerName(selectT1.value, 'T1');
-    const t2Name = indexerName(selectT2.value, 'T2');
-
-    const header = ['Type', 'Source', 'Titre', 'Catégorie', 'Taille (bytes)', 'Seeders', 'Date', 'Lien'];
-    const rows   = [];
-
-    uniqueT2Results.forEach(r => rows.push([
-      'manquant_sur_t1', t2Name, csvField(r.title), getCategoryName(r),
-      r.size || 0, r.seeders || 0, r.publishDate || '', r.downloadUrl || r.magnetUrl || ''
-    ]));
-    uniqueT1Results.forEach(r => rows.push([
-      'manquant_sur_t2', t1Name, csvField(r.title), getCategoryName(r),
-      r.size || 0, r.seeders || 0, r.publishDate || '', r.downloadUrl || r.magnetUrl || ''
-    ]));
-    commonResults.forEach(p => {
-      rows.push(['commun', t1Name, csvField(p.t1.title), getCategoryName(p.t1),
-        p.t1.size || 0, p.t1.seeders || 0, p.t1.publishDate || '', p.t1.downloadUrl || p.t1.magnetUrl || '']);
-      rows.push(['commun', t2Name, csvField(p.t2.title), getCategoryName(p.t2),
-        p.t2.size || 0, p.t2.seeders || 0, p.t2.publishDate || '', p.t2.downloadUrl || p.t2.magnetUrl || '']);
-    });
-
-    if (!rows.length) return;
-    const csv = [header.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    downloadCsv(csv, `comparaison_complète_${new Date().toISOString().slice(0, 10)}.csv`);
-    log(`Export complet: ${rows.length} lignes exportées`, 'ok');
-  });
 
   // ─── Event bindings ───────────────────────────────────────
   btnConnect.addEventListener('click', testConnection);
@@ -1809,10 +1874,10 @@ function makeRow(release, sourceName, sourceClass, idx) {
     document.getElementById('results-search').placeholder      = t('filter-title-placeholder');
     const allIdxOpt = document.getElementById('all-indexers-option');
     if (allIdxOpt) allIdxOpt.textContent = t('all-indexers');
-    document.getElementById('btn-export-csv-text').textContent = t('btn-export-csv');
-    document.getElementById('btn-export-csv').title            = t('btn-export-csv-title');
-    document.getElementById('btn-export-all-text').textContent = t('btn-export-all');
-    document.getElementById('btn-export-all').title            = t('btn-export-all-title');
+    const exportCsvAllEl = document.getElementById('export-csv-all-text');
+    if (exportCsvAllEl) exportCsvAllEl.textContent = t('export-csv-all');
+    const exportJsonAllEl = document.getElementById('export-json-all-text');
+    if (exportJsonAllEl) exportJsonAllEl.textContent = t('export-json-all');
     document.getElementById('btn-reset-text').textContent      = t('btn-reset');
     document.getElementById('btn-reset').title                 = t('btn-reset-title');
 
@@ -2023,38 +2088,522 @@ function makeRow(release, sourceName, sourceClass, idx) {
   });
 
 
+  let currentHistoryFilter = 'all';
+  document.querySelectorAll('.btn-history-filter').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.btn-history-filter').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      currentHistoryFilter = e.target.dataset.filter;
+      renderHistory();
+    });
+  });
+
+  function saveHistory(entry) {
+    searchHistory.unshift(entry);
+    if (searchHistory.length > 50) searchHistory = searchHistory.slice(0, 50);
+    localStorage.setItem('search_history', JSON.stringify(searchHistory));
+    persistData('history', searchHistory);
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    if (!list) return;
+    
+    let filteredHistory = searchHistory;
+    if (currentHistoryFilter !== 'all') {
+      filteredHistory = searchHistory.filter(h => h.mode === currentHistoryFilter);
+    }
+    
+    if (filteredHistory.length === 0) {
+      list.innerHTML = `<div class="empty-panel">${t('history-empty')}</div>`;
+      return;
+    }
+    
+    // Check if we have a history search text filter
+    const textFilter = document.getElementById('history-search')?.value.toLowerCase() || '';
+    if (textFilter) {
+      filteredHistory = filteredHistory.filter(h => (h.query || '').toLowerCase().includes(textFilter));
+    }
+    
+    list.innerHTML = '';
+    if (filteredHistory.length === 0) {
+      list.innerHTML = `<div class="empty-panel">Aucun résultat ne correspond à la recherche.</div>`;
+      return;
+    }
+    
+    filteredHistory.forEach((entry, idx) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const isCompare = entry.mode === 'compare';
+      const modeStr = isCompare ? t('history-mode-compare') : t('history-mode-search');
+      let indexersStr = '';
+      if (isCompare && entry.t1 && entry.t2) {
+        indexersStr = `· ${escapeHtml(entry.t1)} vs ${escapeHtml(entry.t2)}`;
+      }
+      const catLabel = entry.cat ? `· ${escapeHtml(entry.cat)}` : '';
+      
+      const modeColorBg = isCompare ? 'var(--accent-t2-glow)' : 'var(--accent-primary)';
+      const modeColorText = isCompare ? 'var(--accent-t2)' : '#111';
+      const modeBadge = `<span class="source-badge" style="background:${modeColorBg}; color:${modeColorText}; width:94px; padding:2px 0; text-align:center; flex-shrink:0; border-radius:4px;">${modeStr}</span>`;
+
+      item.innerHTML = `
+        <div class="history-item-info">
+          <div class="history-item-query" style="display:flex; align-items:center; gap:10px;">
+            ${modeBadge}
+            <span>${escapeHtml(entry.query || 'Toutes catégories')}</span>
+          </div>
+          <div class="history-item-meta">
+            ${entry.date} · <span class="seeders-badge mid" style="margin-right:2px">${entry.count} résultats</span> ${catLabel} ${indexersStr}
+          </div>
+        </div>
+        <div class="history-item-actions">
+          <button class="btn-icon btn-icon-sm" data-idx="${idx}" data-action="rerun" title="${t('history-rerun')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button class="btn-icon btn-icon-sm btn-icon-danger" data-idx="${idx}" data-action="delete" title="${t('history-delete')}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+          </button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+    list.querySelectorAll('[data-action="rerun"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entry = searchHistory[+btn.dataset.idx];
+        if (!entry) return;
+        // Switch to the right mode
+        const modeBtn = document.querySelector(`.mode-btn[data-mode="${entry.mode}"]`);
+        if (modeBtn) modeBtn.click();
+        // Fill in the query
+        if (filterQuery) { filterQuery.value = entry.query || ''; }
+        if (entry.cat && filterCat) { filterCat.value = entry.cat; filterCat.dispatchEvent(new Event('change')); }
+        if (entry.limit && filterLimit) filterLimit.value = entry.limit;
+        // Switch back to results view
+        const resultsBtn = document.querySelector('.mode-btn[data-mode="search"], .mode-btn[data-mode="compare"]');
+        setTimeout(() => handleMainAction(), 100);
+      });
+    });
+    list.querySelectorAll('[data-action="delete"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        searchHistory.splice(+btn.dataset.idx, 1);
+        localStorage.setItem('search_history', JSON.stringify(searchHistory));
+        persistData('history', searchHistory);
+        renderHistory();
+      });
+    });
+  }
+
+  document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+    if (confirm(t('btn-delete-confirm') || "Êtes-vous sûr de vouloir vider l'historique ?")) {
+      if (currentHistoryFilter === 'all') {
+        searchHistory = [];
+      } else {
+        searchHistory = searchHistory.filter(h => h.mode !== currentHistoryFilter);
+      }
+      localStorage.setItem('search_history', JSON.stringify(searchHistory));
+      persistData('history', searchHistory);
+      renderHistory();
+    }
+  });
+
+  // ─── Watchlist ────────────────────────────────────────────
+  function isInWatchlist(release) {
+    return watchlist.some(w => w.guid === (release.guid || release.title));
+  }
+
+  function toggleWatchlist(release) {
+    const key = release.guid || release.title;
+    const idx = watchlist.findIndex(w => w.guid === key);
+    if (idx >= 0) {
+      watchlist.splice(idx, 1);
+    } else {
+      watchlist.push({
+        ...release,
+        guid: key,
+        savedAt: new Date().toLocaleDateString(currentLang === 'fr' ? 'fr-FR' : 'en-US')
+      });
+    }
+    watchlist = watchlist.slice(0, 200);
+    localStorage.setItem('watchlist', JSON.stringify(watchlist));
+    persistData('bookmark', watchlist);
+    renderWatchlist();
+  }
+
+  document.getElementById('watchlist-indexer-filter')?.addEventListener('change', () => renderWatchlist());
+  document.getElementById('watchlist-search')?.addEventListener('input', () => renderWatchlist());
+  document.getElementById('history-search')?.addEventListener('input', () => renderHistory());
+
+  function renderWatchlist() {
+    const tbody = document.getElementById('watchlist-body');
+    const table = document.getElementById('watchlist-table');
+    const emptyState = document.getElementById('watchlist-empty-state');
+    const filterEl = document.getElementById('watchlist-indexer-filter');
+    if (!tbody || !table || !emptyState) return;
+    
+    if (watchlist.length === 0) {
+      table.style.display = 'none';
+      emptyState.style.display = 'flex';
+      emptyState.innerHTML = t('watchlist-empty');
+      if (filterEl) filterEl.innerHTML = '<option value="">Tous les indexeurs</option>';
+      return;
+    }
+    
+    table.style.display = 'table';
+    emptyState.style.display = 'none';
+    tbody.innerHTML = '';
+
+    // Manage filter dropdown dynamically based on available sources in watchlist
+    if (filterEl) {
+      const currentVal = filterEl.value;
+      const uniqueSources = new Set(watchlist.map(r => r.sourceTracker || r.source || 'Inconnu'));
+      filterEl.innerHTML = '<option value="">Tous les indexeurs</option>';
+      uniqueSources.forEach(src => {
+        filterEl.innerHTML += `<option value="${escapeHtml(src)}" ${src === currentVal ? 'selected' : ''}>${escapeHtml(src)}</option>`;
+      });
+    }
+
+    const filterVal = filterEl?.value || '';
+    const textFilter = document.getElementById('watchlist-search')?.value.toLowerCase() || '';
+
+    // Watchlist data rendering
+    const dataToRender = watchlist.filter(r => {
+      const src = r.sourceName || r.indexer || getIndexerName(r._source) || 'Inconnu';
+      if (filterVal && src !== filterVal) return false;
+      if (textFilter && !(r.title || '').toLowerCase().includes(textFilter)) return false;
+      return true;
+    });
+
+    if (dataToRender.length === 0) {
+      table.style.display = 'none';
+      emptyState.style.display = 'flex';
+      emptyState.innerHTML = 'Aucun résultat ne correspond à la recherche.';
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    dataToRender.forEach((item, idx) => {
+      const srcName = item.sourceName || item.indexer || getIndexerName(item._source) || 'Inconnu';
+      const tr = makeRow(item, srcName, 'dynamic', idx);
+      frag.appendChild(tr);
+    });
+    tbody.appendChild(frag);
+  }
+
+  document.getElementById('btn-clear-watchlist')?.addEventListener('click', () => {
+    if (confirm(t('btn-delete-confirm') || "Êtes-vous sûr de vouloir vider vos favoris ?")) {
+      watchlist = [];
+      localStorage.setItem('watchlist', JSON.stringify(watchlist));
+      persistData('bookmark', watchlist);
+      renderWatchlist();
+      renderResults();
+    }
+  });
+
+  // ─── Copy magnet ──────────────────────────────────────────
+  function copyToClipboard(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.classList.add('copied');
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>`;
+      setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 1500);
+    }).catch(() => {});
+  }
+
+  resultsBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.link-btn-magnet');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const magnet = btn.dataset.magnet;
+      if (magnet) copyToClipboard(magnet, btn);
+    }
+  });
+
+  const watchlistList = document.getElementById('watchlist-list');
+  if (watchlistList) {
+    watchlistList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.link-btn-magnet');
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const magnet = btn.dataset.magnet;
+        if (magnet) copyToClipboard(magnet, btn);
+      }
+    });
+  }
+
+  // ─── Multi-sort ───────────────────────────────────────────
+  document.querySelectorAll('.results-table thead th.sortable').forEach(th => {
+    th.addEventListener('click', (e) => {
+      const col = th.dataset.sort;
+      if (e.shiftKey) {
+        // Secondary sort
+        if (sortSecondary.col === col) {
+          sortSecondary.dir = sortSecondary.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortSecondary = { col, dir: 'asc' };
+        }
+      } else {
+        // Primary sort
+        if (sortPrimary.col === col) {
+          sortPrimary.dir = sortPrimary.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortPrimary = { col, dir: 'asc' };
+          sortSecondary = { col: null, dir: 'asc' };
+        }
+        // keep legacy vars in sync
+        sortCol = sortPrimary.col;
+        sortDir = sortPrimary.dir;
+      }
+      updateSortIcons();
+      currentPage = 0;
+      renderResults();
+    });
+  });
+
+  function updateSortIcons() {
+    document.querySelectorAll('.results-table thead th').forEach(h => {
+      h.classList.remove('sorted-asc', 'sorted-desc');
+      const icon = h.querySelector('.sort-icon');
+      if (icon) icon.textContent = '↕';
+      if (icon) icon.className = 'sort-icon';
+    });
+    if (sortPrimary.col) {
+      const th = document.querySelector(`.results-table thead th[data-sort="${sortPrimary.col}"]`);
+      if (th) {
+        th.classList.add(sortPrimary.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        const icon = th.querySelector('.sort-icon');
+        if (icon) { icon.textContent = sortPrimary.dir === 'asc' ? '↑' : '↓'; icon.classList.add('sort-primary'); }
+      }
+    }
+    if (sortSecondary.col) {
+      const th = document.querySelector(`.results-table thead th[data-sort="${sortSecondary.col}"]`);
+      if (th) {
+        const icon = th.querySelector('.sort-icon');
+        if (icon) { icon.textContent = sortSecondary.dir === 'asc' ? '↑²' : '↓²'; icon.classList.add('sort-secondary'); }
+      }
+    }
+  }
+
+  // ─── Export dropdown ──────────────────────────────────────
+  const exportMenu    = document.getElementById('export-menu');
+
+  exportTrigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', () => exportMenu?.classList.remove('open'));
+
+  function buildExportData() {
+    const t1Name = indexerName(selectT1.value, 'T1');
+    const t2Name = indexerName(selectT2.value, 'T2');
+    return { t1Name, t2Name };
+  }
+
+  function exportCurrentTab(format) {
+    const { t1Name, t2Name } = buildExportData();
+    let rows = [], header = [];
+
+    if (currentTab === 'search') {
+      header = ['source', 'title', 'category', 'size', 'seeders', 'leechers', 'age', 'link'];
+      rows = getFilteredSorted().map(r => ({
+        source: r.sourceTracker || '', title: r.title, category: getCategoryName(r),
+        size: r.size || 0, seeders: r.seeders || 0, leechers: r.leechers || 0,
+        age: r.publishDate || '', link: r.downloadUrl || r.magnetUrl || ''
+      }));
+    } else if (currentTab === 'common') {
+      header = ['source_t1', 'title_t1', 'size_t1', 'seeders_t1', 'source_t2', 'title_t2', 'size_t2', 'seeders_t2'];
+      rows = commonResults.map(p => ({
+        source_t1: t1Name, title_t1: p.t1.title, size_t1: p.t1.size || 0, seeders_t1: p.t1.seeders || 0,
+        source_t2: t2Name, title_t2: p.t2.title, size_t2: p.t2.size || 0, seeders_t2: p.t2.seeders || 0,
+      }));
+    } else {
+      const data = currentTab === 'unique-t2' ? uniqueT2Results : uniqueT1Results;
+      header = ['source', 'title', 'category', 'size', 'seeders', 'age', 'link'];
+      rows = data.map(r => ({
+        source: r._source === 't1' ? t1Name : t2Name, title: r.title,
+        category: getCategoryName(r), size: r.size || 0, seeders: r.seeders || 0,
+        age: r.publishDate || '', link: r.downloadUrl || r.magnetUrl || ''
+      }));
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    if (format === 'csv') {
+      const csv = [header.join(';'), ...rows.map(r => header.map(k => csvField(String(r[k] ?? ''))).join(';'))].join('\n');
+      downloadFile('\uFEFF' + csv, `export_${currentTab}_${date}.csv`, 'text/csv;charset=utf-8;');
+    } else {
+      downloadFile(JSON.stringify(rows, null, 2), `export_${currentTab}_${date}.json`, 'application/json');
+    }
+    log(`Export ${format.toUpperCase()} (${currentTab}): ${rows.length} lignes`, 'ok');
+    exportMenu.classList.remove('open');
+  }
+
+  function exportAll(format) {
+    const { t1Name, t2Name } = buildExportData();
+    const rows = [];
+    uniqueT2Results.forEach(r => rows.push({ type: 'missing_t1', source: t2Name, title: r.title, category: getCategoryName(r), size: r.size || 0, seeders: r.seeders || 0, age: r.publishDate || '', link: r.downloadUrl || r.magnetUrl || '' }));
+    uniqueT1Results.forEach(r => rows.push({ type: 'missing_t2', source: t1Name, title: r.title, category: getCategoryName(r), size: r.size || 0, seeders: r.seeders || 0, age: r.publishDate || '', link: r.downloadUrl || r.magnetUrl || '' }));
+    commonResults.forEach(p => {
+      rows.push({ type: 'common', source: t1Name, title: p.t1.title, category: getCategoryName(p.t1), size: p.t1.size || 0, seeders: p.t1.seeders || 0, age: p.t1.publishDate || '', link: p.t1.downloadUrl || '' });
+      rows.push({ type: 'common', source: t2Name, title: p.t2.title, category: getCategoryName(p.t2), size: p.t2.size || 0, seeders: p.t2.seeders || 0, age: p.t2.publishDate || '', link: p.t2.downloadUrl || '' });
+    });
+    if (!rows.length) return;
+    const date = new Date().toISOString().slice(0, 10);
+    const header = ['type', 'source', 'title', 'category', 'size', 'seeders', 'age', 'link'];
+    if (format === 'csv') {
+      const csv = [header.join(';'), ...rows.map(r => header.map(k => csvField(String(r[k] ?? ''))).join(';'))].join('\n');
+      downloadFile('\uFEFF' + csv, `export_complet_${date}.csv`, 'text/csv;charset=utf-8;');
+    } else {
+      downloadFile(JSON.stringify(rows, null, 2), `export_complet_${date}.json`, 'application/json');
+    }
+    log(`Export ${format.toUpperCase()} complet: ${rows.length} lignes`, 'ok');
+    exportMenu.classList.remove('open');
+  }
+
+  function downloadFile(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportData(data, format, prefix) {
+    if (!data.length) {
+       log('Rien à exporter.', 'warn');
+       return;
+    }
+    const date = new Date().toISOString().slice(0, 10);
+    if (format === 'csv') {
+      const header = ['source', 'title', 'category', 'size', 'seeders', 'age', 'link'];
+      const rows = data.map(r => ({
+        source: r.sourceTracker || r.source || '', title: r.title, category: getCategoryName(r),
+        size: r.size || 0, seeders: r.seeders || 0, age: r.publishDate || '', link: r.downloadUrl || r.magnetUrl || ''
+      }));
+      const csv = [header.join(';'), ...rows.map(r => header.map(k => csvField(String(r[k] ?? ''))).join(';'))].join('\n');
+      downloadFile('\uFEFF' + csv, `export_${prefix}_${date}.csv`, 'text/csv;charset=utf-8;');
+    } else {
+      const exportItems = data.map(r => ({
+        source: r.sourceTracker || r.source || '', title: r.title, category: getCategoryName(r),
+        size: r.size || 0, seeders: r.seeders || 0, age: r.publishDate || '', link: r.downloadUrl || r.magnetUrl || ''
+      }));
+      downloadFile(JSON.stringify(exportItems, null, 2), `export_${prefix}_${date}.json`, 'application/json');
+    }
+    log(`Export ${format.toUpperCase()} (${prefix}): ${data.length} lignes`, 'ok');
+  }
+
+  document.getElementById('btn-export-csv-all')?.addEventListener('click',  () => {
+    if (appMode === 'search') exportCurrentTab('csv');
+    else exportAll('csv');
+  });
+  document.getElementById('btn-export-json-all')?.addEventListener('click', () => {
+    if (appMode === 'search') exportCurrentTab('json');
+    else exportAll('json');
+  });
+
+  // Watchlist export
+  const btnExportWatchlistTrigger = document.getElementById('btn-export-watchlist-trigger');
+  const exportWatchlistDropdown = document.getElementById('export-watchlist-dropdown');
+  if (btnExportWatchlistTrigger && exportWatchlistDropdown) {
+    btnExportWatchlistTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      exportWatchlistDropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!btnExportWatchlistTrigger.contains(e.target) && !exportWatchlistDropdown.contains(e.target)) {
+        exportWatchlistDropdown.classList.remove('open');
+      }
+    });
+    document.getElementById('btn-export-watchlist-csv')?.addEventListener('click', () => {
+      exportWatchlistDropdown.classList.remove('open');
+      exportData(watchlist, 'csv', 'favoris');
+    });
+    document.getElementById('btn-export-watchlist-json')?.addEventListener('click', () => {
+      exportWatchlistDropdown.classList.remove('open');
+      exportData(watchlist, 'json', 'favoris');
+    });
+  }
+
+  // ─── Version & update check ───────────────────────────────
+  async function checkVersion() {
+    const badge = document.getElementById('version-badge');
+    if (!badge) return;
+
+    let current = null;
+    try {
+      const res = await fetch('/api/version');
+      const data = await res.json();
+      current = data.version;
+    } catch (_) {
+      return; // hors Docker, on ne montre rien
+    }
+
+    if (!current || current === 'unknown') return;
+    badge.textContent = `v${current}`;
+    badge.title = `Version installée : ${current}`;
+
+    // Vérification de mise à jour via GitHub Releases
+    try {
+      const res = await fetch('https://api.github.com/repos/mrddream/trackertools/releases/latest');
+      if (!res.ok) return;
+      const release = await res.json();
+      const latest = (release.tag_name || '').replace(/^v/, '');
+      if (latest && latest !== current) {
+        badge.textContent = `v${current} → v${latest} ↑`;
+        badge.title = `Mise à jour disponible : v${latest}\nCliquer pour voir la release`;
+        badge.classList.add('update-available');
+        badge.addEventListener('click', () => {
+          window.open(release.html_url, '_blank', 'noopener');
+        });
+      }
+    } catch (_) {} // silencieux si GitHub injoignable
+  }
+
   // ─── Init ─────────────────────────────────────────────────
   loadSettings();
   renderManualIndexersList();
+  checkVersion();
   log("Application prête.", 'info');
 
-  // Try to fetch external config file from Docker volume
-  fetch('/config/config.json')
-    .then(async (res) => {
-      if (!res.ok) throw new Error('No external config');
-      const config = await res.json();
-      let hasExternal = false;
-      if (config.url) { prowlarrUrl.value = config.url; hasExternal = true; }
-      if (config.apiKey) { prowlarrApiKey.value = config.apiKey; hasExternal = true; }
-      if (config.manualIndexers) {
-        manualIndexers = config.manualIndexers;
-        localStorage.setItem('manual_indexers', JSON.stringify(manualIndexers));
-        renderManualIndexersList();
-      }
-      if (hasExternal) {
-        log('Configuration chargée depuis le volume (/config/config.json)', 'ok');
-        saveSettings(); // Save them locally as well
-      }
-      
-      // Auto-connect if credentials are present
-      if (prowlarrUrl.value && prowlarrApiKey.value) {
-        log('Identifiants détectés, connexion automatique…', 'info');
-        testConnection();
-      } else {
-        openSettings();
-      }
-    })
-    .catch(() => {
+  // Try to fetch external data from Docker volume
+  Promise.all([
+    fetch('/config/config.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch('/config/history.json').then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch('/config/bookmark.json').then(r => r.ok ? r.json() : []).catch(() => [])
+  ]).then(([config, remoteHistory, remoteBookmark]) => {
+    let hasExternal = false;
+    if (config.url) { prowlarrUrl.value = config.url; hasExternal = true; }
+    if (config.apiKey) { prowlarrApiKey.value = config.apiKey; hasExternal = true; }
+    if (config.manualIndexers) {
+      manualIndexers = config.manualIndexers;
+      localStorage.setItem('manual_indexers', JSON.stringify(manualIndexers));
+      renderManualIndexersList();
+    }
+    
+    // Remote files override local if present and not empty
+    if (Array.isArray(remoteHistory) && remoteHistory.length > 0) {
+      searchHistory = remoteHistory;
+      localStorage.setItem('search_history', JSON.stringify(searchHistory));
+    }
+    if (Array.isArray(remoteBookmark) && remoteBookmark.length > 0) {
+      watchlist = remoteBookmark;
+      localStorage.setItem('watchlist', JSON.stringify(watchlist));
+      if (appMode === 'watchlist') renderWatchlist();
+    }
+
+    if (hasExternal) {
+      log('Configuration chargée depuis le volume (/config)', 'ok');
+      saveSettings(); // Save them locally as well
+    }
+    
+    // Auto-connect if credentials are present
+    if (prowlarrUrl.value && prowlarrApiKey.value) {
+      log('Identifiants détectés, connexion automatique…', 'info');
+      testConnection();
+    } else {
+      openSettings();
+    }
+  }).catch(() => {
       // Auto-connect if credentials are already saved locally
       if (prowlarrUrl.value && prowlarrApiKey.value) {
         log('Identifiants détectés, connexion automatique…', 'info');

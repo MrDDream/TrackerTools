@@ -2,9 +2,10 @@ const http = require('http');
 const fs   = require('fs');
 const path = require('path');
 
-const CONFIG_PATH = '/config/config.json';
-const STATIC_DIR  = __dirname;
-const PORT        = 80;
+const CONFIG_DIR   = '/config';
+const VERSION_PATH = path.join(__dirname, 'VERSION');
+const STATIC_DIR   = __dirname;
+const PORT         = 80;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -18,16 +19,20 @@ const MIME = {
 
 http.createServer((req, res) => {
 
-  // ── POST /api/save-config ────────────────────────────────
-  if (req.method === 'POST' && req.url === '/api/save-config') {
+  // ── POST /api/save/:type ────────────────────────────────
+  if (req.method === 'POST' && req.url.startsWith('/api/save/')) {
+    const type = req.url.split('/').pop();
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
+        if (!['config', 'history', 'bookmark'].includes(type)) {
+          throw new Error('Invalid type');
+        }
         const data = JSON.parse(body);
-        const dir  = path.dirname(CONFIG_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
+        const filePath = path.join(CONFIG_DIR, `${type}.json`);
+        if (!fs.existsSync(CONFIG_DIR)) fs.mkdirSync(CONFIG_DIR, { recursive: true });
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{"ok":true}');
       } catch (e) {
@@ -38,14 +43,31 @@ http.createServer((req, res) => {
     return;
   }
 
-  // ── GET /config/config.json ──────────────────────────────
-  if (req.method === 'GET' && req.url.startsWith('/config/config.json')) {
-    if (fs.existsSync(CONFIG_PATH)) {
+  // ── GET /api/version ─────────────────────────────────────
+  if (req.method === 'GET' && req.url === '/api/version') {
+    const version = fs.existsSync(VERSION_PATH)
+      ? fs.readFileSync(VERSION_PATH, 'utf8').trim()
+      : 'unknown';
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ version }));
+    return;
+  }
+
+  // ── GET /config/ ──────────────────────────────
+  if (req.method === 'GET' && req.url.startsWith('/config/')) {
+    const filename = req.url.split('/').pop();
+    const filePath = path.join(CONFIG_DIR, filename);
+    
+    if (fs.existsSync(filePath)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(fs.readFileSync(CONFIG_PATH));
+      res.end(fs.readFileSync(filePath));
     } else {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end('{}');
+      if (filename === 'history.json' || filename === 'bookmark.json') {
+        res.end('[]');
+      } else {
+        res.end('{}');
+      }
     }
     return;
   }
