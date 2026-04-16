@@ -1,18 +1,16 @@
 # Tracker Tools
 
-> 🇫🇷 [Version française](README.md)
+<p align="center">
+  <img src="img/logo.svg" alt="Tracker Tools" width="80" />
+</p>
 
-**Tracker Tools** is a web interface for [Prowlarr](https://github.com/Prowlarr/Prowlarr) offering two complementary modes: search across multiple indexers simultaneously, or compare two indexers to identify torrents missing on either side.
+<p align="center">
+  <strong>Tracker Tools</strong> is a web interface for <a href="https://github.com/Prowlarr/Prowlarr">Prowlarr</a> offering two complementary modes: search across multiple indexers simultaneously, or compare two indexers to identify torrents missing on either side.
+</p>
 
----
-
-## Screenshots
-
-### Search Mode
-![Search Mode](img/search.png)
-
-### Compare Mode
-![Compare Mode](img/compare.png)
+<p align="center">
+  🇫🇷 <a href="README.md">Version française</a>
+</p>
 
 ---
 
@@ -41,6 +39,16 @@
 - Pagination (50 results per page)
 - Persistent configuration (localStorage)
 - Built-in debug console
+
+---
+
+## Screenshots
+
+### Search Mode
+![Search Mode](img/search.png)
+
+### Compare Mode
+![Compare Mode](img/compare.png)
 
 ---
 
