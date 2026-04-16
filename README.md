@@ -111,3 +111,9 @@ Si Prowlarr tourne sur une machine différente, activez le CORS dans **Prowlarr 
 ## Licence
 
 MIT
+
+---
+
+<p align="center">
+  Conçu avec l'aide de <a href="https://www.anthropic.com/claude">Claude</a> &amp; <a href="https://antigravity.google/">Antigravity</a>
+</p>
