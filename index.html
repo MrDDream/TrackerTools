@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracker Tools</title>
+  <meta name="description" content="Connectez-vous à Prowlarr, sélectionnez deux indexeurs et comparez leurs torrents pour identifier les manquants." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2'><path d='M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app-wrapper">
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+            <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+          </svg>
+        </div>
+        <div style="display:flex; flex-direction:column; justify-content:center; gap:2px;">
+          <h1 class="app-title" style="margin:0;">Tracker Tools</h1>
+          <span id="app-subtitle" style="font-size:0.72rem; font-style:italic; color:var(--text-muted); line-height:1;">Comparateur &amp; explorateur d'indexeurs Prowlarr</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="tabs-bar">
+          <button class="tab-btn mode-btn mode-btn-active" data-mode="search" title="Mode Recherche Globale">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span id="mode-btn-search-text">Rechercher</span>
+          </button>
+          <button class="tab-btn mode-btn" data-mode="compare" title="Mode Comparateur">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+            <span id="mode-btn-compare-text">Comparer</span>
+          </button>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-status" id="header-status">
+          <span class="status-dot" id="header-dot"></span>
+          <span class="status-text" id="header-status-text">Non connecté</span>
+        </div>
+        <select id="lang-select" class="lang-select" title="Language / Langue">
+          <option value="fr" selected>FR</option>
+          <option value="en">EN</option>
+        </select>
+        <button class="btn-settings" id="btn-theme-toggle" title="Basculer le thème clair/sombre">
+          <!-- Sun icon for dark mode, will swap dynamically or just show contrast icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon">
+            <circle cx="12" cy="12" r="5" />
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+        </button>
+        <button class="btn-settings" id="btn-open-settings" title="Paramètres de connexion">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="main-grid">
+
+      <!-- LEFT COLUMN -->
+      <aside class="sidebar">
+
+        <!-- ── Step 1: Sélection des indexeurs ── -->
+        <section class="card card-disabled" id="section-indexers">
+          <div class="card-header">
+            <div class="card-icon select-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </div>
+            <div>
+              <h2 class="card-title" id="card-title-indexers">Sélection des indexeurs</h2>
+              <span class="step-badge" id="badge-step1">Étape 1</span>
+            </div>
+          </div>
+          <div id="compare-selectors" style="display:none;">
+            <div class="form-group">
+              <label for="select-t1"><span id="label-t1-text">Indexeur 1</span> <span class="label-accent t1-color" id="label-t1-ref">(référence)</span></label>
+              <select id="select-t1" disabled>
+                <option value="" id="select-t1-default">— Connectez-vous d'abord —</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="select-t2"><span id="label-t2-text">Indexeur 2</span> <span class="label-accent t2-color" id="label-t2-ref">(comparé)</span></label>
+              <select id="select-t2" disabled>
+                <option value="" id="select-t2-default">— Connectez-vous d'abord —</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div id="search-selectors" style="display:block; margin-top:2px;">
+            <div class="form-group">
+              <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 8px;">
+                <span id="protocol-filter-label" style="font-weight:600; padding-bottom: 4px; border-bottom: 1px solid var(--bg-card-border); display: block; width: 100%;">Filtrer les protocoles</span>
+                <div style="display:flex; gap:6px; width: 100%;">
+                  <button type="button" class="btn-icon btn-icon-sm" id="btn-search-select-torrent" title="Torrents uniquement" style="height:32px; justify-content:center; flex:1;"><span id="btn-torrent-text">Torrents</span></button>
+                  <button type="button" class="btn-icon btn-icon-sm" id="btn-search-select-usenet" title="Usenet uniquement" style="height:32px; justify-content:center; flex:1;"><span id="btn-usenet-text">Usenet</span></button>
+                  <button type="button" class="btn-icon btn-icon-sm" id="btn-search-select-all" title="Inverser tout" style="height:32px; width:36px; padding:0; justify-content:center;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="multi-select-container" id="multi-select-container">
+                <div id="multi-select-placeholder" style="padding:10px; text-align:center; color:var(--text-muted); font-size:0.8rem;">— Connectez-vous d'abord —</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Step 2: Filtres de recherche ── -->
+        <section class="card card-disabled" id="section-filters">
+          <div class="card-header">
+            <div class="card-icon filter-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            </div>
+            <div>
+              <h2 class="card-title" id="card-title-filters">Recherche &amp; Filtres</h2>
+              <span class="step-badge" id="badge-step2">Étape 2</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label id="label-search" for="filter-query">Recherche (nom / titre)</label>
+            <input type="text" id="filter-query" placeholder="ex: Breaking Bad" disabled />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label id="label-cat" for="filter-cat">Catégorie</label>
+              <select id="filter-cat" disabled>
+                <option value="" id="cat-all">Toutes</option>
+                <option value="2000" id="cat-movies">Films</option>
+                <option value="5000" id="cat-tv">TV</option>
+                <option value="3000" id="cat-music">Musique</option>
+                <option value="7000" id="cat-books">Livres</option>
+                <option value="4000" id="cat-pc">PC / Jeux</option>
+                <option value="1000" id="cat-console">Console</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label id="label-subcat" for="filter-subcat">Sous-catégorie</label>
+              <select id="filter-subcat" disabled>
+                <option value="" id="subcat-all">Toutes</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label id="label-limit" for="filter-limit">Résultats max</label>
+              <input type="number" id="filter-limit" value="100" min="1" max="500" disabled />
+            </div>
+            <div class="form-group" id="compare-match-mode" style="display:none;">
+              <label id="label-method" for="filter-match-mode">Méthode</label>
+              <select id="filter-match-mode" disabled>
+                <option value="fuzzy" id="method-fuzzy">Intelligent</option>
+                <option value="normalized" id="method-norm">Standard</option>
+              </select>
+            </div>
+            <div class="form-group" id="search-match-mode" style="display:block;">
+              <label id="label-filter-mode" for="filter-search-strict">Filtrage</label>
+              <select id="filter-search-strict" disabled>
+                <option value="strict" id="filter-strict">Strict</option>
+                <option value="raw" id="filter-off">Désactivé</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn-compare" id="btn-compare" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+            <span id="btn-run-text">Lancer la comparaison</span>
+          </button>
+        </section>
+      </aside>
+
+      <!-- RIGHT COLUMN: RESULTS -->
+      <div class="results-panel">
+
+        <!-- Stats bar -->
+        <div class="stats-bar" id="stats-bar" style="display:none;">
+          <div class="stat-card">
+            <span class="stat-value" id="stat-t1">–</span>
+            <span class="stat-label" id="stat-label-t1">Résultats <span class="badge badge-t1 badge-sm" id="badge-name-t1">T1</span></span>
+          </div>
+          <div class="stat-separator"></div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-t2">–</span>
+            <span class="stat-label" id="stat-label-t2">Résultats <span class="badge badge-t2 badge-sm" id="badge-name-t2">T2</span></span>
+          </div>
+          <div class="stat-separator"></div>
+          <div class="stat-card">
+            <span class="stat-value" id="stat-common">–</span>
+            <span class="stat-label" id="stat-label-common">En commun</span>
+          </div>
+          <div class="stat-separator"></div>
+          <div class="stat-card">
+            <span class="stat-value stat-highlight" id="stat-unique-t1">–</span>
+            <span class="stat-label" id="stat-label-unique-t1">Unique <span class="badge badge-t1 badge-sm" id="badge-unique-t1">T1</span></span>
+          </div>
+          <div class="stat-separator"></div>
+          <div class="stat-card">
+            <span class="stat-value stat-highlight" id="stat-unique-t2">–</span>
+            <span class="stat-label" id="stat-label-unique-t2">Unique <span class="badge badge-t2 badge-sm" id="badge-unique-t2">T2</span></span>
+          </div>
+          <div class="stat-separator"></div>
+          <div class="stat-card">
+            <span class="stat-value stat-overlap" id="stat-overlap">–</span>
+            <span class="stat-label" id="stat-label-similarity">Similarité</span>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-container" id="progress-container" style="display:none">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+          <p class="progress-label" id="progress-label">Initialisation…</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-bar" id="tabs-bar" style="display:none;">
+          <button class="tab-btn tab-active" data-tab="unique-t2" id="tab-unique-t2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Manquants sur T1
+          </button>
+          <button class="tab-btn" data-tab="unique-t1" id="tab-unique-t1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Manquants sur T2
+          </button>
+          <button class="tab-btn" data-tab="common" id="tab-common">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            En commun
+          </button>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="results-toolbar">
+          <div style="display: flex; gap: 12px; flex: 1; align-items: center;">
+            <div class="search-mini-wrap" style="flex: 1;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input type="text" id="results-search" placeholder="Filtrer par titre…" />
+            </div>
+            <select id="results-indexer-filter" class="filter-select" style="display: block;">
+              <option value="" id="all-indexers-option">Tous les indexeurs</option>
+            </select>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn-icon" id="btn-export-csv" title="Exporter l'onglet actif en CSV" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span id="btn-export-csv-text">CSV</span>
+            </button>
+            <button class="btn-icon" id="btn-export-all" title="Exporter tous les onglets en CSV" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/><path d="M17 10l-5 5-5-5" opacity="0.4"/></svg>
+              <span id="btn-export-all-text">Tout exporter</span>
+            </button>
+            <button class="btn-icon btn-icon-danger" id="btn-reset" title="Réinitialiser les résultats" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              <span id="btn-reset-text">Réinitialiser</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="table-container" id="table-container">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+              </svg>
+            </div>
+            <p class="empty-title" id="empty-title">Aucune recherche effectuée</p>
+            <p class="empty-desc" id="empty-desc">Connectez-vous à Prowlarr via <strong>⚙ Paramètres</strong>, sélectionnez vos indexeurs et validez.</p>
+          </div>
+
+          <table class="results-table" id="results-table" style="display:none">
+            <thead>
+              <tr>
+                <th id="th-source">Source</th>
+                <th data-sort="title" class="sortable" id="th-title">Titre <span class="sort-icon">↕</span></th>
+                <th data-sort="category" class="sortable" id="th-category">Catégorie <span class="sort-icon">↕</span></th>
+                <th data-sort="size" class="sortable" id="th-size">Taille <span class="sort-icon">↕</span></th>
+                <th data-sort="seeders" class="sortable" id="th-seeds">Seeds <span class="sort-icon">↕</span></th>
+                <th data-sort="leechers" class="sortable" id="th-leech">Leech <span class="sort-icon">↕</span></th>
+                <th data-sort="age" class="sortable" id="th-age">Âge <span class="sort-icon">↕</span></th>
+                <th id="th-link">Lien</th>
+                <th id="th-torrent">Torrent</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-bar" id="pagination-bar" style="display:none">
+          <button class="btn-icon" id="btn-page-prev" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            <span id="btn-prev-text">Précédent</span>
+          </button>
+          <span class="page-info" id="page-info"></span>
+          <button class="btn-icon" id="btn-page-next" disabled>
+            <span id="btn-next-text">Suivant</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+
+        <!-- Log console -->
+        <details class="log-panel" id="log-panel">
+          <summary id="log-summary">Console de débogage</summary>
+          <div class="log-toolbar">
+            <button class="btn-icon btn-icon-sm" id="btn-clear-log">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+              <span id="btn-clear-log-text">Vider</span>
+            </button>
+          </div>
+          <div class="log-body" id="log-body"></div>
+        </details>
+      </div>
+    </main>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-panel" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="card-icon prowlarr-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
+          </div>
+          <h2 class="modal-title" id="modal-title">Connexion Prowlarr</h2>
+        </div>
+        <button class="btn-modal-close" id="btn-modal-close" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <!-- Prowlarr Section -->
+        <h3 id="settings-section1" style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase;">1. Serveur Prowlarr</h3>
+        <div class="form-group">
+          <label id="label-prowlarr-url" for="prowlarr-url">URL de l'instance</label>
+          <input type="url" id="prowlarr-url" placeholder="http://localhost:9696" />
+        </div>
+        <div class="form-group">
+          <label id="label-prowlarr-apikey" for="prowlarr-apikey">Clé API</label>
+          <div class="input-icon-wrap">
+            <input type="password" id="prowlarr-apikey" placeholder="••••••••••••••••••••••••" />
+            <button class="btn-eye" id="btn-eye-apikey" title="Afficher/Masquer" aria-label="Toggle visibility">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-connect" style="margin-bottom: 8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span id="btn-connect-text">Tester la connexion</span>
+        </button>
+        <div class="connection-result" id="connection-result" style="display:none; margin-top:0; margin-bottom: 24px;">
+          <span class="result-icon" id="result-icon"></span>
+          <span class="result-msg" id="result-msg"></span>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--bg-card-border); margin: 20px 0;">
+
+        <!-- Manual Indexers Section -->
+        <h3 id="settings-section2" style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
+          <span id="settings-section2-text">2. Indexeurs manuels API</span>
+          <button class="btn-icon btn-icon-sm" id="btn-open-manual" title="Ajouter un indexeur">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            <span id="btn-add-manual-header-text">Ajouter</span>
+          </button>
+        </h3>
+        <p id="manual-desc" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Ajoutez directement vos indexeurs Torznab externes ou Jackett.</p>
+
+        <div id="manual-indexers-list" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Manual indexers rendered here via JS -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL INDEXER MODAL -->
+  <div class="modal-overlay" id="modal-manual-overlay">
+    <div class="modal-panel" id="modal-manual-indexer" role="dialog" aria-modal="true" aria-labelledby="modal-manual-title">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="card-icon setup-icon" style="background: rgba(168,85,247,0.15); color: var(--accent-t2);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+          <h2 class="modal-title" id="modal-manual-title">Ajouter un indexeur Torznab</h2>
+        </div>
+        <button class="btn-modal-close" id="btn-manual-close" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="manual-edit-id" value="">
+        <div class="form-group">
+          <label id="label-manual-name" for="manual-name">Nom du tracker</label>
+          <input type="text" id="manual-name" placeholder="Ex: YggTorrent (externe)" />
+        </div>
+        <div class="form-group">
+          <label id="label-manual-url" for="manual-url">URL Torznab (API)</label>
+          <input type="url" id="manual-url" placeholder="http://jackett:9117/api/v2.0/indexers/ygg/results/torznab/" />
+        </div>
+        <div class="form-group">
+          <label id="label-manual-apikey" for="manual-apikey">Clé API Torznab</label>
+          <input type="password" id="manual-apikey" placeholder="Clé API" />
+        </div>
+        <button class="btn-primary" id="btn-add-manual" style="background: linear-gradient(135deg, var(--accent-t2), #7e22ce); box-shadow: 0 4px 20px rgba(168,85,247,0.3);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span id="btn-add-manual-text">Ajouter</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

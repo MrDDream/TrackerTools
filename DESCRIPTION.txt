@@ -1,0 +1,1 @@
+Interface web pour Prowlarr — recherche multi-indexeurs en parallèle et comparateur de torrents. Déployable en Docker. FR/EN.

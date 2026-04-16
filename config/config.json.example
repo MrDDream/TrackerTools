@@ -1,0 +1,5 @@
+{
+  "url": "http://your-prowlarr-ip:9696",
+  "apiKey": "YOUR_PROWLARR_API_KEY",
+  "manualIndexers": []
+}
