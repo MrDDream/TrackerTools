@@ -72,6 +72,61 @@ http.createServer((req, res) => {
     return;
   }
 
+  // ── POST /api/torrent-proxy ──────────────────────────────
+  if (req.method === 'POST' && req.url === '/api/torrent-proxy') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const payload = JSON.parse(body);
+        const targetUrl = payload.url;
+        if (!targetUrl) throw new Error('Missing target URL');
+        const urlObj = new URL(targetUrl);
+        const isHttps = urlObj.protocol === 'https:';
+        const lib = isHttps ? require('https') : require('http');
+        const options = {
+          hostname: urlObj.hostname,
+          port: urlObj.port || (isHttps ? 443 : 80),
+          path: urlObj.pathname + urlObj.search,
+          method: payload.method || 'POST',
+          headers: {
+            'Content-Type': payload.contentType || 'application/json',
+            ...(payload.headers || {})
+          }
+        };
+        const proxyBody = typeof payload.body === 'string' ? payload.body : '';
+        if (proxyBody) options.headers['Content-Length'] = Buffer.byteLength(proxyBody);
+        const proxyReq = lib.request(options, (proxyRes) => {
+          let responseBody = '';
+          proxyRes.on('data', chunk => responseBody += chunk);
+          proxyRes.on('end', () => {
+            const setCookies = proxyRes.headers['set-cookie'];
+            const xTransmission = proxyRes.headers['x-transmission-session-id'];
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              status: proxyRes.statusCode,
+              headers: {
+                ...(setCookies ? { 'x-proxy-set-cookie': JSON.stringify(setCookies) } : {}),
+                ...(xTransmission ? { 'x-transmission-session-id': xTransmission } : {})
+              },
+              body: responseBody
+            }));
+          });
+        });
+        proxyReq.on('error', (err) => {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        });
+        if (proxyBody) proxyReq.write(proxyBody);
+        proxyReq.end();
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // ── Static files ─────────────────────────────────────────
   let urlPath = req.url.split('?')[0]; // strip query string
   if (urlPath === '/') urlPath = '/index.html';

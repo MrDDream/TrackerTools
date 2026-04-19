@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY index.html .
 COPY style.css  .
-COPY app.js     .
+COPY js/       ./js/
 COPY server.js  .
 COPY VERSION    .
 

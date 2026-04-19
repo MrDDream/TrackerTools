@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Tracker Tools</strong> est une interface web pour <a href="https://github.com/Prowlarr/Prowlarr">Prowlarr</a> qui offre deux modes complémentaires : rechercher simultanément sur plusieurs indexeurs, ou comparer deux indexeurs pour identifier les torrents manquants de part et d'autre.
+  <strong>Tracker Tools</strong> est une interface web pour <a href="https://github.com/Prowlarr/Prowlarr">Prowlarr</a> qui offre plusieurs modes complémentaires : rechercher simultanément sur plusieurs indexeurs, comparer deux indexeurs pour identifier les torrents manquants, ou gérer votre client BitTorrent depuis une interface unifiée.
 </p>
 
 <p align="center">
@@ -20,30 +20,58 @@
 - Recherche multi-indexeurs en parallèle
 - Filtre par protocole (Torrents / Usenet)
 - Filtrage par catégorie et sous-catégorie
-- Tri par colonne (titre, taille, seeds, âge…)
+- Tri par colonne (titre, taille, seeds, âge…) avec **tri multi-colonnes** (Shift+clic)
 - Filtre par indexeur source sur les résultats
-- Export CSV
+- Filtre de recherche **strict** (correspondance exacte) ou **raw** (résultats bruts)
+- Export CSV / JSON
+- Liens `.torrent` (téléchargement direct) et Magnet (ouverture dans le client OS)
+- **Ajout direct** au client BitTorrent depuis les résultats
 
 ### Mode Comparaison
 - Comparaison de deux indexeurs côte à côte
 - Algorithme de matching **intelligent** (similarité Jaccard sur les tokens + proximité de taille) ou **standard** (normalisation de titre)
 - Statistiques : résultats par indexeur, torrents communs, manquants, pourcentage de similarité
 - Onglets : Manquants sur T1 / Manquants sur T2 / En commun
-- Export CSV de chaque onglet ou de tous les onglets
+- Export CSV / JSON de chaque onglet ou de tous les onglets
 
-### Général & Utilitaires
-- **Favoris (Watchlist)** : sauvegardez d'un clic vos torrents préférés pour les retrouver plus tard, avec filtre et export dédiés (JSON/CSV)
+### Mes Torrents
+- Affichage de tous les torrents du client BitTorrent connecté
+- Statut, progression, ratio, taille, données uploadées, étiquettes, catégorie, ancienneté
+- Source/indexeur deviné automatiquement depuis l'URL du tracker
+- Filtre par catégorie, par tag et par texte libre
+- Tri par colonne (nom, taille, progression, ratio, catégorie, date…)
+- **Pagination** intégrée (20 torrents par page)
+- **Recherche rapide** : lancez une recherche sur n'importe quel torrent en un clic
+- **Ajout** de torrent par URL Magnet avec choix du chemin, catégorie et tags
+- Actualisation à la demande
+
+### État des indexeurs
+- Vue d'ensemble de tous les indexeurs Prowlarr
+- Test de connectivité individuel ou groupé ("Tout tester")
+- Historique des derniers tests par indexeur
+
+### Favoris & Historique
+- **Favoris (Watchlist)** : sauvegardez d'un clic vos torrents préférés, avec filtre et export dédiés (JSON/CSV)
 - **Historique complet** : retrouvez toutes vos requêtes précédentes (recherche ou comparaison) et relancez-les en un clic
-- Filtre textuel "rapide" sur les résultats de recherche, d'historique et de favoris
+
+### Interface & UX
+- **PWA** : installable sur mobile et desktop (icône, mode standalone, cache offline)
+- **Responsive** : optimisé pour tous les écrans (mobile, tablette, PC 13", grand écran)
+- Panneau latéral **rétractable** (bouton de bascule)
+- Sections Indexeurs et Filtres **rétractables**
+- Scroll horizontal sur les tableaux sans coupure de colonnes
+- Thème clair / sombre
+- Bilinguisme natif **FR / EN**
+- Pagination fluide des résultats
+- Console de débogage intégrée
+- **Badge de version** avec notification automatique de mise à jour disponible
 
 ### Architecture
 - Connexion à Prowlarr via URL + clé API
 - Support des indexeurs **Torznab externes** (Jackett, etc.)
-- **Persistance totale** assurée par un backend Node.js ultra-léger communiquant avec le volume Docker (URL, clé API, indexeurs manuels, Historique et Favoris)
-- Interface "Glassmorphism" au thème clair / sombre
-- Bilinguisme natif **FR / EN**
-- Pagination fluide des résultats
-- Console de débogage intégrée
+- **Clients BitTorrent supportés** : qBittorrent, Deluge, Transmission (proxy serveur)
+- **Persistance totale** assurée par un backend Node.js ultra-léger communiquant avec le volume Docker (URL, clé API, indexeurs manuels, paramètres client torrent, Historique et Favoris)
+- Codebase JavaScript **entièrement modulaire** (ES Modules)
 
 ---
 
@@ -83,7 +111,11 @@ L'interface est accessible sur `http://localhost:8077`
 
 ### 3. Configuration
 
-Connectez-vous à Prowlarr et ajoutez vos indexeurs directement depuis l'interface via **⚙ Paramètres**. La configuration est automatiquement sauvegardée dans le volume `./config` et restaurée au redémarrage du container.
+Ouvrez **⚙ Paramètres** et renseignez :
+- L'URL et la clé API de votre instance Prowlarr
+- Optionnel : votre client BitTorrent (qBittorrent, Deluge ou Transmission) avec URL, utilisateur et mot de passe
+
+La configuration est automatiquement sauvegardée dans le volume `./config` et restaurée au redémarrage du container.
 
 ---
 
@@ -97,9 +129,11 @@ Si Prowlarr tourne sur une machine différente, activez le CORS dans **Prowlarr 
 ## Stack technique
 
 - HTML / CSS / JavaScript — aucune dépendance, aucun build
-- [Node.js](https://nodejs.org/) pour le serveur de fichiers statiques et la persistance de configuration
+- [Node.js](https://nodejs.org/) pour le serveur de fichiers statiques, le proxy torrent et la persistance de configuration
 - API Prowlarr v1 (`/api/v1/indexer`, `/api/v1/search`)
 - API Torznab standard pour les indexeurs manuels
+- API qBittorrent Web v2 (`/api/v2/torrents/…`) / Deluge JSON-RPC / Transmission RPC
+- Service Worker (PWA, cache offline)
 
 ---
 

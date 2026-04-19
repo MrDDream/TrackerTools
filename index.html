@@ -2,10 +2,17 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Tracker Tools</title>
   <meta name="description" content="Connectez-vous à Prowlarr, sélectionnez deux indexeurs et comparez leurs torrents pour identifier les manquants." />
+  <meta name="theme-color" content="#f97316" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Tracker Tools" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2'><path d='M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5'/></svg>" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f97316' stroke-width='2'><path d='M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5'/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -27,12 +34,21 @@
             <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
           </svg>
         </div>
-        <div style="display:flex; flex-direction:column; justify-content:center; gap:2px;">
+        <div style="display:flex; flex-direction:column; justify-content:center; gap:4px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <h1 class="app-title" style="margin:0;">Tracker Tools</h1>
             <span id="version-badge" class="version-badge" title="Version actuelle"></span>
           </div>
-          <span id="app-subtitle" style="font-size:0.72rem; font-style:italic; color:var(--text-muted); line-height:1;">Comparateur &amp; explorateur d'indexeurs Prowlarr</span>
+          <div class="header-status-row">
+            <div class="header-status" id="torrent-header-status" style="display:none;">
+              <span class="status-dot" id="torrent-header-dot"></span>
+              <span class="status-text" id="torrent-header-text"></span>
+            </div>
+            <div class="header-status" id="header-status">
+              <span class="status-dot" id="header-dot"></span>
+              <span class="status-text" id="header-status-text">Non connecté</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -54,13 +70,17 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <span id="mode-btn-watchlist-text">Favoris</span>
           </button>
+          <button class="tab-btn mode-btn" data-mode="indexers" title="État des indexeurs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            <span id="mode-btn-indexers-text">Indexeurs</span>
+          </button>
+          <button class="tab-btn mode-btn" data-mode="torrents" title="Mes Torrents">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            <span id="mode-btn-torrents-text">Mes Torrents</span>
+          </button>
         </div>
       </div>
       <div class="header-right">
-        <div class="header-status" id="header-status">
-          <span class="status-dot" id="header-dot"></span>
-          <span class="status-text" id="header-status-text">Non connecté</span>
-        </div>
         <select id="lang-select" class="lang-select" title="Language / Langue">
           <option value="fr" selected>FR</option>
           <option value="en">EN</option>
@@ -89,16 +109,18 @@
 
         <!-- ── Step 1: Sélection des indexeurs ── -->
         <section class="card card-disabled" id="section-indexers">
-          <div class="card-header">
+          <div class="card-header" style="cursor: pointer;" id="indexer-header-collapse">
             <div class="card-icon select-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
             </div>
-            <div>
+            <div style="flex:1;">
               <h2 class="card-title" id="card-title-indexers">Sélection des indexeurs</h2>
               <span class="step-badge" id="badge-step1">Étape 1</span>
             </div>
+            <svg id="indexer-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; transition: transform 0.2s; transform: rotate(180deg);"><path d="M6 9l6 6 6-6"/></svg>
           </div>
-          <div id="compare-selectors" style="display:none;">
+          <div id="indexer-collapse-body">
+            <div id="compare-selectors" style="display:none;">
             <div class="form-group">
               <label for="select-t1"><span id="label-t1-text">Indexeur 1</span> <span class="label-accent t1-color" id="label-t1-ref">(référence)</span></label>
               <select id="select-t1" disabled>
@@ -131,77 +153,86 @@
                 <div id="multi-select-placeholder" style="padding:10px; text-align:center; color:var(--text-muted); font-size:0.8rem;">— Connectez-vous d'abord —</div>
               </div>
             </div>
+            </div>
           </div>
         </section>
 
         <!-- ── Step 2: Filtres de recherche ── -->
         <section class="card card-disabled" id="section-filters">
-          <div class="card-header">
+          <div class="card-header" style="cursor: pointer;" id="filters-header-collapse">
             <div class="card-icon filter-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
             </div>
-            <div>
+            <div style="flex:1;">
               <h2 class="card-title" id="card-title-filters">Recherche &amp; Filtres</h2>
               <span class="step-badge" id="badge-step2">Étape 2</span>
             </div>
+            <svg id="filters-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; transition: transform 0.2s; transform: rotate(180deg);"><path d="M6 9l6 6 6-6"/></svg>
           </div>
 
-          <div class="form-group">
-            <label id="label-search" for="filter-query">Recherche (nom / titre)</label>
-            <input type="text" id="filter-query" placeholder="ex: Breaking Bad" disabled />
-          </div>
-
-          <div class="form-row">
+          <div id="filters-collapse-body">
             <div class="form-group">
-              <label id="label-cat" for="filter-cat">Catégorie</label>
-              <select id="filter-cat" disabled>
-                <option value="" id="cat-all">Toutes</option>
-                <option value="2000" id="cat-movies">Films</option>
-                <option value="5000" id="cat-tv">TV</option>
-                <option value="3000" id="cat-music">Musique</option>
-                <option value="7000" id="cat-books">Livres</option>
-                <option value="4000" id="cat-pc">PC / Jeux</option>
-                <option value="1000" id="cat-console">Console</option>
-              </select>
+              <label id="label-search" for="filter-query">Recherche (nom / titre)</label>
+              <input type="text" id="filter-query" placeholder="ex: Breaking Bad" disabled />
             </div>
-            <div class="form-group">
-              <label id="label-subcat" for="filter-subcat">Sous-catégorie</label>
-              <select id="filter-subcat" disabled>
-                <option value="" id="subcat-all">Toutes</option>
-              </select>
-            </div>
-          </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label id="label-limit" for="filter-limit">Résultats max</label>
-              <input type="number" id="filter-limit" value="100" min="1" max="500" disabled />
+            <div class="form-row">
+              <div class="form-group">
+                <label id="label-cat" for="filter-cat">Catégorie</label>
+                <select id="filter-cat" disabled>
+                  <option value="" id="cat-all">Toutes</option>
+                  <option value="2000" id="cat-movies">Films</option>
+                  <option value="5000" id="cat-tv">TV</option>
+                  <option value="3000" id="cat-music">Musique</option>
+                  <option value="7000" id="cat-books">Livres</option>
+                  <option value="4000" id="cat-pc">PC / Jeux</option>
+                  <option value="1000" id="cat-console">Console</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label id="label-subcat" for="filter-subcat">Sous-catégorie</label>
+                <select id="filter-subcat" disabled>
+                  <option value="" id="subcat-all">Toutes</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group" id="compare-match-mode" style="display:none;">
-              <label id="label-method" for="filter-match-mode">Méthode</label>
-              <select id="filter-match-mode" disabled>
-                <option value="fuzzy" id="method-fuzzy">Intelligent</option>
-                <option value="normalized" id="method-norm">Standard</option>
-              </select>
-            </div>
-            <div class="form-group" id="search-match-mode" style="display:block;">
-              <label id="label-filter-mode" for="filter-search-strict">Filtrage</label>
-              <select id="filter-search-strict" disabled>
-                <option value="strict" id="filter-strict">Strict</option>
-                <option value="raw" id="filter-off">Désactivé</option>
-              </select>
-            </div>
-          </div>
 
-          <button class="btn-compare" id="btn-compare" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
-            <span id="btn-run-text">Lancer la comparaison</span>
-          </button>
+            <div class="form-row">
+              <div class="form-group">
+                <label id="label-limit" for="filter-limit">Résultats max</label>
+                <input type="number" id="filter-limit" value="100" min="1" max="500" disabled />
+              </div>
+              <div class="form-group" id="compare-match-mode" style="display:none;">
+                <label id="label-method" for="filter-match-mode">Méthode</label>
+                <select id="filter-match-mode" disabled>
+                  <option value="fuzzy" id="method-fuzzy">Intelligent</option>
+                  <option value="normalized" id="method-norm">Standard</option>
+                </select>
+              </div>
+              <div class="form-group" id="search-match-mode" style="display:block;">
+                <label id="label-filter-mode" for="filter-search-strict">Filtrage</label>
+                <select id="filter-search-strict" disabled>
+                  <option value="strict" id="filter-strict">Strict</option>
+                  <option value="raw" id="filter-off">Désactivé</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="btn-compare" id="btn-compare" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+              <span id="btn-run-text">Lancer la comparaison</span>
+            </button>
+          </div>
         </section>
       </aside>
 
       <!-- RIGHT COLUMN: RESULTS -->
       <div class="results-panel">
+
+        <!-- Sidebar toggle -->
+        <button id="btn-toggle-sidebar" class="btn-sidebar-toggle" title="Masquer/afficher le panneau gauche">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
 
         <!-- Stats bar -->
         <div class="stats-bar" id="stats-bar" style="display:none;">
@@ -414,6 +445,95 @@
           </div>
         </div>
 
+        <!-- Indexers Status panel -->
+        <div id="indexers-panel" style="display:none;">
+          <div class="panel-card">
+            <div class="panel-header">
+              <span id="indexers-panel-title">État des indexeurs</span>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <div class="progress-bar-wrap" id="indexers-test-progress-wrap" style="width:120px; display:none;">
+                  <div class="progress-bar" id="indexers-test-progress-bar"></div>
+                </div>
+                <button class="btn-icon btn-icon-sm" id="btn-test-all-indexers">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  <span id="btn-test-all-text">Tout tester</span>
+                </button>
+                <button class="btn-icon btn-icon-sm" id="btn-refresh-indexers">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  <span id="btn-refresh-indexers-text">Actualiser</span>
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <div id="indexers-grid" class="indexers-grid" style="display:none;"></div>
+              <div id="indexers-empty-state" class="empty-state">
+                <div class="empty-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                </div>
+                <p class="empty-title" id="indexers-empty-title">Aucun indexeur</p>
+                <p class="empty-desc" id="indexers-empty-desc">Connectez-vous à Prowlarr via <strong>⚙ Paramètres</strong> pour voir les indexeurs.</p>
+              </div>
+            </div>
+          </div>
+          <div id="indexer-history-drawer" class="indexer-history-drawer" style="display:none; margin-top:12px;"></div>
+        </div>
+
+        <!-- Torrents panel -->
+        <div id="torrents-panel" style="display:none;">
+          <div class="panel-card">
+            <div class="panel-header">
+              <span id="torrents-panel-title" style="flex-shrink:0;">Mes Torrents</span>
+              <div style="display:flex; gap:8px; align-items:center; flex:1; justify-content:space-between; flex-wrap:nowrap; overflow:hidden;">
+                <!-- left part (search mini wrap) -->
+                <div class="search-mini-wrap" style="flex:1; min-width:80px; max-width:350px; margin-left: 5%;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input type="text" id="torrents-search" placeholder="Filtrer…" />
+                </div>
+                <!-- right part (filters and buttons) -->
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <select id="torrents-category-filter" style="width:140px; font-size:0.8rem; padding:4px 8px; border-radius:4px; border:1px solid var(--bg-card-border); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">
+                    <option value="all">Toutes</option>
+                  </select>
+                  <select id="torrents-tags-filter" style="width:140px; font-size:0.8rem; padding:4px 8px; border-radius:4px; border:1px solid var(--bg-card-border); background:var(--bg-surface); color:var(--text-primary); cursor:pointer;">
+                    <option value="all">Tags (Tous)</option>
+                  </select>
+                  <button class="btn-icon btn-icon-sm" id="btn-refresh-torrents">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span id="btn-refresh-torrents-text">Actualiser</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="table-container">
+              <table class="results-table" id="torrents-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th id="tth-source" style="width:5%;">Source</th>
+                    <th id="tth-name" style="width:28%;">Titre</th>
+                    <th id="tth-status" style="width:5%;">Statut</th>
+                    <th id="tth-progress" style="width:9%;">Progression</th>
+                    <th id="tth-size" style="width:6%;">Taille</th>
+                    <th id="tth-uploaded" style="width:6%;">Envoyé</th>
+                    <th id="tth-ratio" style="width:5%;">Ratio</th>
+                    <th id="tth-category" style="width:9%;">Catégorie</th>
+                    <th id="tth-tags" style="width:15%;">Étiquettes</th>
+                    <th id="tth-added" style="width:6%;">Ajouté</th>
+                    <th id="tth-action" style="width:4%;"></th>
+                  </tr>
+                </thead>
+                <tbody id="torrents-table-body"></tbody>
+              </table>
+              <div id="torrents-empty-state" class="empty-state">
+                <div class="empty-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                </div>
+                <p class="empty-title" id="torrents-empty-title">Aucun client configuré</p>
+                <p class="empty-desc" id="torrents-empty-desc">Configurez votre client BitTorrent dans <strong>⚙ Paramètres</strong>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Log console -->
         <details class="log-panel" id="log-panel">
           <summary id="log-summary">Console de débogage</summary>
@@ -437,51 +557,112 @@
           <div class="card-icon prowlarr-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
           </div>
-          <h2 class="modal-title" id="modal-title">Connexion Prowlarr</h2>
+          <h2 class="modal-title" id="modal-title">Paramètres</h2>
         </div>
         <button class="btn-modal-close" id="btn-modal-close" aria-label="Fermer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
-      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-        <!-- Prowlarr Section -->
-        <h3 id="settings-section1" style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase;">1. Serveur Prowlarr</h3>
-        <div class="form-group">
-          <label id="label-prowlarr-url" for="prowlarr-url">URL de l'instance</label>
-          <input type="url" id="prowlarr-url" placeholder="http://localhost:9696" />
-        </div>
-        <div class="form-group">
-          <label id="label-prowlarr-apikey" for="prowlarr-apikey">Clé API</label>
-          <div class="input-icon-wrap">
-            <input type="password" id="prowlarr-apikey" placeholder="••••••••••••••••••••••••" />
-            <button class="btn-eye" id="btn-eye-apikey" title="Afficher/Masquer" aria-label="Toggle visibility">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+
+        <!-- ── 1. Prowlarr ── -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="settings-section-icon prowlarr-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
+            </div>
+            <span id="settings-section1">1. Serveur Prowlarr</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2;">
+              <label id="label-prowlarr-url" for="prowlarr-url">URL</label>
+              <input type="url" id="prowlarr-url" placeholder="http://localhost:9696" />
+            </div>
+            <div class="form-group" style="flex:2;">
+              <label id="label-prowlarr-apikey" for="prowlarr-apikey">Clé API</label>
+              <div class="input-icon-wrap">
+                <input type="password" id="prowlarr-apikey" placeholder="••••••••••••••••••••••••" />
+                <button class="btn-eye" id="btn-eye-apikey" title="Afficher/Masquer" aria-label="Toggle visibility">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn-primary" id="btn-connect" style="flex:1; margin:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              <span id="btn-connect-text">Connexion</span>
             </button>
+            <div class="connection-result" id="connection-result" style="display:none; flex:2; margin:0;">
+              <span class="result-icon" id="result-icon"></span>
+              <span class="result-msg" id="result-msg"></span>
+            </div>
           </div>
         </div>
-        <button class="btn-primary" id="btn-connect" style="margin-bottom: 8px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          <span id="btn-connect-text">Tester la connexion</span>
-        </button>
-        <div class="connection-result" id="connection-result" style="display:none; margin-top:0; margin-bottom: 24px;">
-          <span class="result-icon" id="result-icon"></span>
-          <span class="result-msg" id="result-msg"></span>
+
+        <!-- ── 2. Client BitTorrent ── -->
+        <div class="settings-section">
+          <div class="settings-section-header">
+            <div class="settings-section-icon" style="background:rgba(249,115,22,0.15); color:var(--accent-primary);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            </div>
+            <span id="settings-section2-text">2. Client BitTorrent</span>
+          </div>
+          <div class="form-row" style="align-items:flex-end;">
+            <div class="form-group" style="flex:1;">
+              <label id="label-torrent-client" for="torrent-client-type">Client</label>
+              <select id="torrent-client-type">
+                <option value="none" id="opt-torrent-none">Aucun</option>
+                <option value="qbittorrent" id="opt-torrent-qbt">qBittorrent</option>
+                <option value="deluge" id="opt-torrent-deluge">Deluge</option>
+                <option value="transmission" id="opt-torrent-transmission">Transmission</option>
+              </select>
+            </div>
+            <div class="form-group" id="torrent-url-group" style="flex:3; display:none;">
+              <label id="label-torrent-url" for="torrent-client-url">URL</label>
+              <input type="url" id="torrent-client-url" placeholder="http://localhost:8080" />
+            </div>
+          </div>
+          <div id="torrent-client-fields" style="display:none;">
+            <div class="form-row">
+              <div class="form-group" style="flex:1;">
+                <label id="label-torrent-user" for="torrent-client-user">Utilisateur</label>
+                <input type="text" id="torrent-client-user" placeholder="admin" />
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label id="label-torrent-pass" for="torrent-client-pass">Mot de passe</label>
+                <div class="input-icon-wrap">
+                  <input type="password" id="torrent-client-pass" placeholder="••••••••" />
+                  <button class="btn-eye" id="btn-eye-torrent" title="Afficher/Masquer" aria-label="Toggle visibility">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+              <button class="btn-primary" id="btn-save-torrent-settings" style="flex:1; margin:0;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span id="btn-save-torrent-text">Connexion</span>
+              </button>
+              <div class="connection-result" id="torrent-connection-result" style="display:none; flex:2; margin:0;"></div>
+            </div>
+          </div>
         </div>
 
-        <hr style="border: 0; border-top: 1px solid var(--bg-card-border); margin: 20px 0;">
-
-        <!-- Manual Indexers Section -->
-        <h3 id="settings-section2" style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-secondary); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
-          <span id="settings-section2-text">2. Indexeurs manuels API</span>
-          <button class="btn-icon btn-icon-sm" id="btn-open-manual" title="Ajouter un indexeur">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-            <span id="btn-add-manual-header-text">Ajouter</span>
-          </button>
-        </h3>
-        <p id="manual-desc" style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px;">Ajoutez directement vos indexeurs Torznab externes ou Jackett.</p>
-
-        <div id="manual-indexers-list" style="display: flex; flex-direction: column; gap: 8px;">
-          <!-- Manual indexers rendered here via JS -->
+        <!-- ── 3. Indexeurs manuels ── -->
+        <div class="settings-section" id="manual-indexers-section" style="margin-bottom:0;">
+          <div class="settings-section-header">
+            <div class="settings-section-icon" style="background:rgba(168,85,247,0.15); color:var(--accent-t2);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </div>
+            <span id="settings-section3-text">3. Indexeurs manuels API</span>
+            <button class="btn-icon btn-icon-sm" id="btn-open-manual" title="Ajouter un indexeur" style="margin-left:auto;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              <span id="btn-add-manual-header-text">Ajouter</span>
+            </button>
+          </div>
+          <p id="manual-desc" style="font-size:0.75rem; color:var(--text-muted); margin:0 0 10px;">Ajoutez directement vos indexeurs Torznab externes ou Jackett.</p>
+          <div id="manual-indexers-list" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
 
       </div>
@@ -524,6 +705,102 @@
     </div>
   </div>
 
-  <script src="app.js?v=1.0"></script>
+  <!-- ADD TORRENT MODAL -->
+  <div class="modal-overlay" id="modal-add-torrent-overlay">
+    <div class="modal-panel" id="modal-add-torrent" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="card-icon" style="background:rgba(249,115,22,0.15); color:var(--accent-primary);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          </div>
+          <h2 class="modal-title" id="modal-add-torrent-title">Ajouter un torrent</h2>
+        </div>
+        <button class="btn-modal-close" id="btn-add-torrent-close" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label id="label-add-torrent-url" for="add-torrent-url">URL / Lien Magnet</label>
+          <input type="text" id="add-torrent-url" placeholder="magnet:?xt=urn:btih:... ou https://..." />
+        </div>
+        <div class="form-group">
+          <label id="label-add-torrent-file">Fichier .torrent <span style="color:var(--text-muted); font-weight:400;">(optionnel si lien renseigné)</span></label>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label class="btn-icon" for="add-torrent-file" style="cursor:pointer; display:inline-flex; border: 1px solid var(--accent-primary); color:var(--text-primary); padding: 6px 12px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Parcourir...
+            </label>
+            <input type="file" id="add-torrent-file" accept=".torrent" style="display:none;" />
+            <span id="add-torrent-file-name" style="font-size:0.85rem; color:var(--text-muted);">Aucun fichier sélectionné</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label id="label-add-torrent-path" for="add-torrent-path">Emplacement <span style="color:var(--text-muted); font-weight:400;">(optionnel)</span></label>
+            <input type="text" id="add-torrent-path" placeholder="/downloads" />
+          </div>
+          <div class="form-group">
+            <label id="label-add-torrent-cat" for="add-torrent-cat">Catégorie <span style="color:var(--text-muted); font-weight:400;">(optionnel)</span></label>
+            <select id="add-torrent-cat">
+              <option value="">Sélectionnez...</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="add-torrent-tags-group">
+          <label id="label-add-torrent-tags" for="add-torrent-tags">Tags <span style="color:var(--text-muted); font-weight:400;">(optionnel)</span></label>
+          <select id="add-torrent-tags" multiple size="3" style="font-family:var(--font); height:auto; min-height:85px;"></select>
+        </div>
+        <button class="btn-primary" id="btn-confirm-add-torrent" style="margin-top:4px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          <span id="btn-confirm-add-torrent-text">Ajouter</span>
+        </button>
+        <div class="connection-result" id="add-torrent-result" style="display:none; margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT INDEXER MODAL -->
+  <div class="modal-overlay" id="modal-edit-indexer-overlay">
+    <div class="modal-panel" id="modal-edit-indexer" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="card-icon" style="background:rgba(59,130,246,0.15); color:var(--accent-t1);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <h2 class="modal-title">Personnaliser Indexeur</h2>
+        </div>
+        <button class="btn-modal-close" id="btn-edit-indexer-close" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-indexer-id" value="">
+        <div class="form-group">
+          <label for="edit-indexer-name">Nom d'affichage</label>
+          <input type="text" id="edit-indexer-name" placeholder="Laisser vide pour utiliser le nom par défaut" />
+        </div>
+        <div class="form-group">
+          <label for="edit-indexer-color">Couleurs de la pastille</label>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="color" id="edit-indexer-color" value="#3b82f6" title="Couleur de fond" style="width:40px; height:40px; padding:0; border-radius:var(--radius-sm); border:1px solid var(--bg-card-border); cursor:pointer;" />
+            <input type="color" id="edit-indexer-text-color" value="#ffffff" title="Couleur de texte" style="width:40px; height:40px; padding:0; border-radius:var(--radius-sm); border:1px solid var(--bg-card-border); cursor:pointer;" />
+            <span style="font-size:0.8rem; color:var(--text-muted);">Choisir fond et texte</span>
+          </div>
+        </div>
+        <button class="btn-primary" id="btn-confirm-edit-indexer" style="margin-top:14px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          <span>Sauvegarder</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js?v=1.2"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  </script>
 </body>
 </html>
