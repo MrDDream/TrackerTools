@@ -83,6 +83,9 @@
 ### Compare Mode
 ![Compare Mode](img/compare.png)
 
+### My Torrents
+![My Torrents](img/mytorrents.png)
+
 ---
 
 ## Deployment
